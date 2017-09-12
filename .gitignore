@@ -1,0 +1,4 @@
+.*
+cmake*
+db
+!.gitignore

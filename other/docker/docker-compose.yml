@@ -1,0 +1,19 @@
+version: "2"
+services:
+  recognizer-server:
+    build: ./recognizer-server
+    volumes:
+      - ./db:/data/db
+    ports:
+      - 8003:80
+    stop_grace_period: 999h
+    networks:
+      recognizer-server:
+        ipv4_address: 172.13.5.2
+networks:
+  recognizer-server:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.13.5.0/24
+          gateway: 172.13.5.1

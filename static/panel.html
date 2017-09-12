@@ -1,0 +1,143 @@
+<html>
+<head>
+    <title>recognizer-server</title>
+</head>
+<body>
+<div style="display: flex;">
+    <div style="flex: 1;padding: 10px">
+        <p>
+            <button id="recognize_btn">Recognize</button>
+        </p>
+        <p><input id="recognize_hash" type="text" style="width:100%" placeholder="Hash"></p>
+        <p><textarea id="recognize_text" style="width:100%;height:300px;" placeholder="Fulltext"></textarea></p>
+        <p id="recognize_result"></p>
+        <p id="recognize_crossref_result"></p>
+    </div>
+
+    <div style="flex: 1;padding: 10px">
+        <p>
+            <button id="index_btn">Index</button>
+        </p>
+        <p><textarea id="index_title" type="text" style="width:100%;height:50px;" placeholder="Title"></textarea></p>
+        <p><textarea id="index_authors" type="text" style="width:100%;height:50px;" placeholder="Authors"></textarea></p>
+        <p><textarea id="index_abstract" type="text" style="width:100%;height:50px;" placeholder="Abstract"></textarea></p>
+        <p><input id="index_year" type="text" style="width:100%" placeholder="Year"></p>
+        <p><input id="index_identifiers" type="text" style="width:100%" placeholder="id1,id2,id3"></p>
+        <p><input id="index_hash" type="text" style="width:100%" placeholder="Hash"></p>
+        <p id="index_result"></p>
+    </div>
+
+</div>
+
+</body>
+<script>
+
+    function authors_to_str(authors) {
+        var authors2 = [];
+        for(var i=0;i<authors.length;i++) {
+            var author = authors[i];
+            if(author.name) {
+                authors2.push(author.name);
+            } else {
+                authors2.push(author.given + ' ' + author.family);
+            }
+        }
+        return authors2.join(',');
+    }
+
+    document.getElementById('recognize_btn').addEventListener('click', function () {
+        var result = document.getElementById('recognize_result').innerHTML = '';
+        document.getElementById('recognize_crossref_result').innerHTML = '';
+        fetch('/recognize', {
+            method: "POST",
+            headers: {
+                'Accept': 'application/json, text/plain, */*',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                hash: document.getElementById('recognize_hash').value,
+                text: document.getElementById('recognize_text').value
+            })
+        })
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (data) {
+                var html = '';
+                for (var key in data) {
+                    var val = data[key];
+                    if(Array.isArray(val)){
+                        val = JSON.stringify(val);
+                    }
+                    html += '<p><b>' + key + ':</b> ' + val + '</p>';
+                }
+
+                document.getElementById('recognize_result').innerHTML = html;
+
+                var crossrefUrl = 'http://api.crossref.org/works?query.title=' + encodeURIComponent(data.title);
+
+                // Sometimes CrossRef fails to find author by it's last name, so we pass more than one
+                var lastNames = [];
+                for(var i=0;i<data.authors.length && i<2;i++) {
+                    lastNames.push(data.authors[i].lastName);
+                }
+
+                if(lastNames.length) {
+                    crossrefUrl += '&query.author=' + encodeURIComponent(lastNames.join(' '));
+                }
+
+                fetch(crossrefUrl, {
+                    method: "GET"
+                })
+                    .then(function (res) {
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        console.log(data);
+
+                        var html = '';
+
+                        html += '<p><b><a target="_blank" href="' + crossrefUrl + '">Crossref:</a></b></p>';
+
+                        data.message.items.forEach(function (item) {
+                            console.log(item.title[0]);
+                            html += '<p><b>' + item.title[0] + '</b> ' + authors_to_str(item.author) + ' <a target="_blank" href="' + item.URL + '">' + item.DOI + '</a></p>';
+                        });
+
+                        document.getElementById('recognize_crossref_result').innerHTML = html;
+
+                    })
+
+            })
+    });
+
+    document.getElementById('index_btn').addEventListener('click', function () {
+        var result = document.getElementById('index_result').innerHTML = '';
+        fetch('/index', {
+            method: "POST",
+            headers: {
+                'Accept': 'application/json, text/plain, */*',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([{
+                title: document.getElementById('index_title').value,
+                authors: document.getElementById('index_authors').value,
+                abstract: document.getElementById('index_abstract').value,
+                year: document.getElementById('index_year').value,
+                identifiers: document.getElementById('index_identifiers').value,
+                hash: document.getElementById('index_hash').value
+            }])
+        })
+            .then(function (res) {
+                return res.json();
+            })
+            .then(function (data) {
+                var html = '';
+                for (var key in data) {
+                    html += '<p><b>' + key + ':</b> ' + data[key] + '</p>';
+                }
+                document.getElementById('index_result').innerHTML = html;
+            })
+    });
+</script>
+</html>
