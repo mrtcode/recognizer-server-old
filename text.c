@@ -29,6 +29,7 @@
 
 #include "xxhash.h"
 #include "text.h"
+#include "rh.h"
 
 UNormalizer2 *unorm2;
 
@@ -339,4 +340,33 @@ uint32_t text_raw_abstract(uint8_t *text, uint32_t *map, uint32_t map_len,
     } while (c > 0 && i <= raw_end);
     *u = 0;
     return 1;
+}
+
+uint64_t text_rh_get32(uint8_t *needle, uint32_t needle_len) {
+    rh_state_t state;
+    rh_reset(&state);
+
+    for (uint32_t i = 0; i < needle_len; i++) {
+        rh_rollin(&state, needle[i]);
+    }
+    return rh_digest(&state) >> 32;
+}
+
+uint8_t *text_rh_find32(uint8_t *haystack, uint32_t haystack_len, uint32_t needle_hash, uint32_t needle_len) {
+    rh_state_t state;
+    rh_reset(&state);
+
+    for (uint32_t i = 0; i < needle_len; i++) {
+        rh_rollin(&state, haystack[i]);
+    }
+
+    if (rh_digest(&state) == needle_hash) return haystack;
+
+    for (uint32_t i = 0; i + needle_len + 1 < haystack_len; i++) {
+        rh_rotate(&state, *(haystack + i + needle_len), *(haystack + i));
+
+        if (rh_digest(&state) >> 32 == needle_hash) return haystack + i + 1;
+    }
+
+    return 0;
 }

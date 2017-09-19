@@ -173,12 +173,12 @@ int db_fields_init(char *path) {
         return 0;
     }
 
-//    sql = "PRAGMA cache_size = 400000;";
-//    if ((rc = sqlite3_exec(shard->sqlite, sql, NULL, 0, 0)) != SQLITE_OK) {
-//        fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
-//        sqlite3_free(err_msg);
-//        return 0;
-//    }
+    sql = "PRAGMA cache_size = 200000;";
+    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
+        sqlite3_free(err_msg);
+        return 0;
+    }
 
     sql = "PRAGMA journal_mode = WAL;";
     if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
@@ -225,6 +225,13 @@ int db_fhth_init(char *path) {
         return 0;
     }
 
+    sql = "PRAGMA cache_size = 100000;";
+    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
+        sqlite3_free(err_msg);
+        return 0;
+    }
+
     sql = "PRAGMA journal_mode = WAL;";
     if ((rc = sqlite3_exec(sqlite_fhth, sql, NULL, 0, 0)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
@@ -232,7 +239,7 @@ int db_fhth_init(char *path) {
         return 0;
     }
 
-    sql = "CREATE TABLE IF NOT EXISTS fhth (fh INTEGER, th INTEGER, PRIMARY KEY (fh, th)) WITHOUT ROWID";
+    sql = "CREATE TABLE IF NOT EXISTS fhth (fh INTEGER, th INTEGER, PRIMARY KEY (fh, th))";
     if ((rc = sqlite3_exec(sqlite_fhth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
@@ -271,6 +278,13 @@ int db_ahth_init(char *path) {
         return 0;
     }
 
+    sql = "PRAGMA cache_size = 100000;";
+    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
+        fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
+        sqlite3_free(err_msg);
+        return 0;
+    }
+
     sql = "PRAGMA journal_mode = WAL;";
     if ((rc = sqlite3_exec(sqlite_ahth, sql, NULL, 0, 0)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
@@ -278,7 +292,7 @@ int db_ahth_init(char *path) {
         return 0;
     }
 
-    sql = "CREATE TABLE IF NOT EXISTS ahth (ah INTEGER, th INTEGER, PRIMARY KEY (ah, th)) WITHOUT ROWID";
+    sql = "CREATE TABLE IF NOT EXISTS ahth (ah INTEGER, th INTEGER, PRIMARY KEY (ah, th))";
     if ((rc = sqlite3_exec(sqlite_ahth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);

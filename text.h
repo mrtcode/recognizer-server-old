@@ -31,4 +31,7 @@ uint32_t text_hash32(uint8_t *text, uint32_t text_len);
 
 uint64_t text_hash64(uint8_t *text, uint32_t text_len);
 
+uint64_t text_rh_get32(uint8_t *needle, uint32_t needle_len);
+uint8_t *text_rh_find32(uint8_t *haystack, uint32_t haystack_len, uint32_t needle_hash, uint32_t needle_len);
+
 #endif //RECOGNIZER_SERVER_TEXT_H

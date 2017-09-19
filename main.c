@@ -36,6 +36,7 @@
 #include "text.h"
 #include "index.h"
 #include "recognize.h"
+#include "rh.h"
 
 onion *on = NULL;
 pthread_rwlock_t data_rwlock;
@@ -242,43 +243,43 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
 }
 
 int save_fields() {
-    printf("saving fields\n");
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
+    printf("saving fields\n");
     db_fields_save();
+    printf("saved\n");
     pthread_rwlock_unlock(&data_rwlock);
     pthread_rwlock_unlock(&saver_rwlock);
-    printf("saved\n");
 }
 
 int save_fhth() {
-    printf("saving fhth\n");
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
+    printf("saving fhth\n");
     db_fhth_save();
+    printf("saved\n");
     pthread_rwlock_unlock(&data_rwlock);
     pthread_rwlock_unlock(&saver_rwlock);
-    printf("saved\n");
 }
 
 int save_ahth() {
-    printf("saving ahth\n");
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
+    printf("saving ahth\n");
     db_ahth_save();
+    printf("saved\n");
     pthread_rwlock_unlock(&data_rwlock);
     pthread_rwlock_unlock(&saver_rwlock);
-    printf("saved\n");
 }
 
 int save_ht() {
-    printf("saving ht\n");
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
+    printf("saving ht\n");
     ht_save();
+    printf("saved\n");
     pthread_rwlock_unlock(&data_rwlock);
     pthread_rwlock_unlock(&saver_rwlock);
-    printf("saved\n");
 }
 
 void *saver_thread(void *arg) {
@@ -305,29 +306,32 @@ void *saver_thread(void *arg) {
         }
 
         if (db_fields_in_transaction() >= 50000000) save_fields();
-        if (db_fhth_in_transaction() >= 50000000) save_fhth();
-        if (db_ahth_in_transaction() >= 50000000) save_ahth();
+        if (db_fhth_in_transaction() >= 10000000) save_fhth();
+        if (db_ahth_in_transaction() >= 10000000) save_ahth();
     }
 }
 
 void signal_handler(int signum) {
     fprintf(stderr, "\nsignal received (%d), shutting down..\n", signum);
 
+    pthread_rwlock_wrlock(&data_rwlock);
+
     if (on) {
         onion_listen_stop(on);
     }
 
-    save_fields();
-    save_fhth();
-    save_ahth();
-    save_ht();
+    printf("saving everything\n");
+    db_fields_save();
+    db_fhth_save();
+    db_ahth_save();
+    ht_save();
 
     if (!db_close()) {
         fprintf(stderr, "db close failed\n");
-        return;
+//        return;
     }
 
-    fprintf(stderr, "exit\n");
+    fprintf(stderr, "exiting\n");
 
     // Force flush because otherwise Docker doesn't output logs
     fflush(stdout);
@@ -340,7 +344,6 @@ void print_usage() {
 }
 
 int main(int argc, char **argv) {
-
     char *opt_db_directory = 0;
     char *opt_port = 0;
 

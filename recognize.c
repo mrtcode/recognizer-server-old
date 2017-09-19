@@ -116,28 +116,28 @@ int extract_abstract(uint8_t *text, uint32_t text_len,
                      uint8_t *data, uint32_t data_len,
                      uint8_t *output_text, uint32_t *output_text_len) {
 
-    uint8_t *p = text;
-
     uint16_t len = *((uint16_t *) (data + 1));
-    uint64_t hash = *((uint64_t *) (data + 3));
+    uint32_t xx_hash = *((uint32_t *) (data + 3));
+    uint32_t rolling_hash = *((uint32_t *) (data + 7));
 
     if (!len) return 0;
 
-    while (p < text + text_len - len) {
-        //printf("oa: %ul\n", text_hash64(p, len));
+    uint8_t *p = text;
 
-        if (text_hash64(p, len) == hash) {
-            //text_raw_abstract(original_text, map, map_len, p - text, p - text + len - 1, output_text, 10000);
+    uint32_t text_len_rem = text_len;
+    while (text_len_rem >= len && (p = text_rh_find32(p, text_len_rem, rolling_hash, len))) {
+        if (text_hash32(p, len) == xx_hash) {
+            text_raw_abstract(original_text, map, map_len, p - text, p - text + len - 1, output_text, 10000);
             return 1;
         }
         p++;
+        text_len_rem = text+text_len-p;
     }
 
     return 0;
 }
 
 int32_t get_year_offset(uint8_t *original_text, uint32_t original_text_len, uint16_t year) {
-
     uint8_t year_str[5];
 
     snprintf(year_str, 5, "%u", year);
@@ -257,8 +257,8 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
     }
 
     if (output_text_len) {
-        for (uint32_t i = 0; i < output_text_len - 100; i++) {
-            uint64_t abstract_hash = text_hash56(output_text + i, 100);
+        for (uint32_t i = 0; i < output_text_len - HASHABLE_ABSTRACT_LEN; i++) {
+            uint64_t abstract_hash = text_hash56(output_text + i, HASHABLE_ABSTRACT_LEN);
             if (ht_get_slot(1, abstract_hash)) {
                 result->detected_abstracts++;
                 sqlite3_stmt *stmt = db_ahth_get_stmt(abstract_hash);

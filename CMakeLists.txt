@@ -3,7 +3,7 @@ project(recognizer-server)
 
 set(CMAKE_C_STANDARD 99)
 
-set(SOURCE_FILES main.c ht.c db.c xxhash.c text.c recognize.c recognize.h index.c index.h)
+set(SOURCE_FILES main.c ht.c db.c xxhash.c text.c recognize.c recognize.h index.c index.h rh.c)
 add_executable(recognizer-server ${SOURCE_FILES})
 
 set(CMAKE_C_FLAGS_RELEASE "-O2")

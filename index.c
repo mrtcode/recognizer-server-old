@@ -91,7 +91,9 @@ uint32_t insert_abstract(uint64_t title_hash, uint8_t *abstract) {
     uint8_t data[11];
     data[0] = 3;
     *((uint16_t *) (data + 1)) = processed_abstract_len;
-    *((uint64_t *) (data + 3)) = text_hash64(processed_abstract, processed_abstract_len);
+    *((uint32_t *) (data + 3)) = text_hash32(processed_abstract, processed_abstract_len);
+    // Rolling hash to speed up lookups
+    *((uint32_t *) (data + 7)) = text_rh_get32(processed_abstract, processed_abstract_len);
 
     db_fields_insert(title_hash, data, 11);
 
@@ -194,6 +196,5 @@ uint32_t index_metadata(metadata_t *metadata) {
     }
 
     updated_t = time(0);
-
     return 1;
 }
