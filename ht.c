@@ -94,8 +94,6 @@ uint32_t ht_add_slot(uint8_t type, uint64_t hash) {
     uint32_t hash32 = (uint32_t) (hash & 0xFFFFFFFF);
     row_t *row = rows + hash23;
 
-    uint8_t len;
-
     if ((type == 1 && row->ah_len == ROW_SLOTS_MAX) ||
         (type == 2 && row->th_len == ROW_SLOTS_MAX)) {
         fprintf(stderr, "reached ROW_SLOTS_MAX limit for type %d\n", type);

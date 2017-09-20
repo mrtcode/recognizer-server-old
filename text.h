@@ -14,6 +14,9 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
 uint32_t text_process_field(uint8_t *text, uint8_t *output_text,
                             uint32_t *output_text_len, uint8_t multi);
 
+uint32_t text_process_fieldn(uint8_t *text, uint32_t text_len,
+                             uint8_t *output_text, uint32_t *output_text_len);
+
 uint32_t text_hash28(uint8_t *text, uint32_t text_len);
 
 uint64_t text_hash56(uint8_t *text, uint32_t text_len);

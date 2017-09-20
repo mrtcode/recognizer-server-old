@@ -177,7 +177,7 @@ uint32_t index_metadata(metadata_t *metadata) {
     if (processed_title_len < 5) return 0;
 
     uint64_t title_hash = text_hash56(processed_title, processed_title_len);
-    //printf("Index: %lu %.*s\n", title_hash, output_text_len, output_text);
+    //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
 
     if (!ht_get_slot(2, title_hash)) {
         ht_add_slot(2, title_hash);
@@ -191,10 +191,6 @@ uint32_t index_metadata(metadata_t *metadata) {
     insert_hash(title_hash, metadata->hash);
 
     total_indexed++;
-    if (total_indexed % 10000 == 0) {
-        printf("%u\n", total_indexed);
-    }
-
     updated_t = time(0);
     return 1;
 }

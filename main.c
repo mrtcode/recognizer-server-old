@@ -47,7 +47,7 @@ json_t *authors_to_json(uint8_t *authors) {
     uint8_t *p = authors;
     uint8_t *s;
 
-    uint8_t *first_name, *last_name;
+    uint8_t *first_name=0, *last_name=0;
     uint32_t first_name_len = 0, last_name_len = 0;
 
     while (1) {
@@ -66,6 +66,8 @@ json_t *authors_to_json(uint8_t *authors) {
             json_object_set(json_author, "firstName", json_stringn(first_name, first_name_len));
             json_object_set(json_author, "lastName", json_stringn(last_name, last_name_len));
             json_array_append(json_authors, json_author);
+            first_name = 0;
+            last_name = 0;
         }
 
         if (!*p) break;
@@ -242,40 +244,13 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
     return OCS_PROCESSED;
 }
 
-int save_fields() {
+int save() {
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
-    printf("saving fields\n");
+    printf("saving\n");
     db_fields_save();
-    printf("saved\n");
-    pthread_rwlock_unlock(&data_rwlock);
-    pthread_rwlock_unlock(&saver_rwlock);
-}
-
-int save_fhth() {
-    pthread_rwlock_wrlock(&saver_rwlock);
-    pthread_rwlock_rdlock(&data_rwlock);
-    printf("saving fhth\n");
     db_fhth_save();
-    printf("saved\n");
-    pthread_rwlock_unlock(&data_rwlock);
-    pthread_rwlock_unlock(&saver_rwlock);
-}
-
-int save_ahth() {
-    pthread_rwlock_wrlock(&saver_rwlock);
-    pthread_rwlock_rdlock(&data_rwlock);
-    printf("saving ahth\n");
     db_ahth_save();
-    printf("saved\n");
-    pthread_rwlock_unlock(&data_rwlock);
-    pthread_rwlock_unlock(&saver_rwlock);
-}
-
-int save_ht() {
-    pthread_rwlock_wrlock(&saver_rwlock);
-    pthread_rwlock_rdlock(&data_rwlock);
-    printf("saving ht\n");
     ht_save();
     printf("saved\n");
     pthread_rwlock_unlock(&data_rwlock);
@@ -283,7 +258,9 @@ int save_ht() {
 }
 
 void *saver_thread(void *arg) {
-    uint64_t last_total_indexed = 0;
+    uint64_t saver_last_total = 0;
+    uint64_t indicator_last_total = 0;
+    time_t indicator_t = 0;
 
     while (1) {
         usleep(50000);
@@ -292,22 +269,32 @@ void *saver_thread(void *arg) {
         fflush(stdout);
         fflush(stderr);
 
+        time_t t = time(0);
+
         uint64_t current_total_indexed = index_total_indexed();
 
-        if (current_total_indexed > last_total_indexed) {
+        if (current_total_indexed > indicator_last_total) {
+            if (indicator_t + 30 <= t) {
+                printf("indexed total=%u, per_second=%u\n",
+                       current_total_indexed,
+                       (current_total_indexed - indicator_last_total) / (t - indicator_t));
+                indicator_last_total = current_total_indexed;
+                indicator_t = t;
+            }
+        } else {
+            indicator_t = t;
+        }
 
-            if (time(0) - index_updated_t() >= 10) {
-                save_fields();
-                save_ahth();
-                save_fhth();
-                save_ht();
-                last_total_indexed = current_total_indexed;
+        if (current_total_indexed > saver_last_total) {
+            if (t - index_updated_t() >= 10) {
+                save();
+                saver_last_total = current_total_indexed;
             }
         }
 
-        if (db_fields_in_transaction() >= 50000000) save_fields();
-        if (db_fhth_in_transaction() >= 10000000) save_fhth();
-        if (db_ahth_in_transaction() >= 10000000) save_ahth();
+        if (db_fields_in_transaction() >= 50000000) {
+            save();
+        }
     }
 }
 

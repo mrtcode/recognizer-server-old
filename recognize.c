@@ -34,7 +34,8 @@
 #include "index.h"
 #include "recognize.h"
 
-int match_title(uint8_t *original_text, uint32_t original_text_len,
+// Only a very basic implementation
+int match_title(uint8_t *processed_text, uint32_t processed_text_len,
                 uint8_t *data, uint32_t data_len) {
     uint8_t *p = data + 1;
     uint8_t *s;
@@ -52,32 +53,27 @@ int match_title(uint8_t *original_text, uint32_t original_text_len,
 
         tokens_total++;
 
-        b = original_text;
-        while (*b) {
-            uint8_t *c = s;
-            while (c < p && *b) {
-                if (*c != *b++) break;
-                c++;
-            }
-            if (c >= p) {
-                tokens_found++;
-                break;
-            }
-        }
+        uint8_t token[256];
+        uint32_t token_len = 256;
+        text_process_fieldn(s, p - s, token, &token_len);
+
+        uint8_t *v = strstr(processed_text, token);
+
+        if (v) tokens_found++;
     }
 
-    if (tokens_found >= tokens_total - 2) return 1;
-
+    if (tokens_total && tokens_found * 100 / tokens_total >= 50) return 1;
     return 0;
 }
 
-int match_authors(uint8_t *original_text, uint8_t *data, uint32_t data_len) {
+int match_authors(uint8_t *processed_text, uint8_t *data, uint32_t data_len) {
     uint8_t *p = data + 1;
     uint8_t *s;
 
     uint8_t *first_name, *last_name;
 
-    uint8_t *a, *b = original_text;
+    uint32_t authors_total = 0;
+    uint32_t authors_found = 0;
 
     while (p - data < data_len - 1) {
         while (p - data < data_len - 1 && (*p == '\t' || *p == '\n')) p++;
@@ -87,27 +83,21 @@ int match_authors(uint8_t *original_text, uint8_t *data, uint32_t data_len) {
 
         if (*p == '\t') {
             first_name = s;
-            //printf("first: %s\n", s);
         } else {
+            authors_total++;
             last_name = s;
-            //printf("last: %s\n", s);
-            uint8_t found = 0;
-            while (*b) {
-                uint8_t *c = last_name;
-                while (c < p && *b) {
-                    if (*c != *b++) break;
-                    c++;
-                }
-                if (c >= p) {
-                    found = 1;
-                    break;
-                }
-            }
+            uint8_t norm_last_name[64];
+            uint32_t norm_last_name_len = 64;
+            text_process_fieldn(last_name, p - s, norm_last_name, &norm_last_name_len);
 
-            if (!found) return 0;
+            uint8_t *v = strstr(processed_text, norm_last_name);
+
+            if (v) authors_found++;
         }
     }
-    return 1;
+
+    if (authors_total && authors_found * 100 / authors_total >= 50) return 1;
+    return 0;
 }
 
 int extract_abstract(uint8_t *text, uint32_t text_len,
@@ -131,7 +121,7 @@ int extract_abstract(uint8_t *text, uint32_t text_len,
             return 1;
         }
         p++;
-        text_len_rem = text+text_len-p;
+        text_len_rem = text + text_len - p;
     }
 
     return 0;
@@ -139,7 +129,6 @@ int extract_abstract(uint8_t *text, uint32_t text_len,
 
 int32_t get_year_offset(uint8_t *original_text, uint32_t original_text_len, uint16_t year) {
     uint8_t year_str[5];
-
     snprintf(year_str, 5, "%u", year);
 
     uint8_t *p = original_text;
@@ -167,7 +156,7 @@ int add_identifier(result_t *result, uint64_t title_hash, uint8_t *identifier, u
     }
 
     result->identifiers[result->identifiers_len].title_hash = title_hash;
-    strcpy(result->identifiers[result->identifiers_len].str, identifier);
+    strncpy(result->identifiers[result->identifiers_len].str, identifier, identifier_len);
 
     result->identifiers_len++;
 
@@ -186,19 +175,17 @@ int get_data(result_t *result, uint8_t *text, uint64_t title_hash,
     metadata.title_hash = title_hash;
 
     while (db_get_next_field(stmt, &data, &data_len)) {
-        //printf("field: %d\n", data[0]);
-
         if (data[0] == 1) {
-            int ret = match_title(text, 0, data, data_len);
+            int ret = match_title(output_text, 0, data, data_len);
 
-            if (ret && strlen(metadata.title) < strlen(data + 1)) {
-                strcpy(metadata.title, data + 1);
+            if (ret && strlen(metadata.title) < data_len - 1) {
+                strncpy(metadata.title, data + 1, data_len - 1);
             }
         } else if (data[0] == 2) {
-            int ret = match_authors(text, data, data_len);
+            int ret = match_authors(output_text, data, data_len);
 
-            if (ret && strlen(metadata.authors) < strlen(data + 1)) {
-                strcpy(metadata.authors, data + 1);
+            if (ret && strlen(metadata.authors) < data_len - 1) {
+                strncpy(metadata.authors, data + 1, data_len - 1);
             }
         } else if (data[0] == 3) {
             uint8_t abstract[sizeof(metadata.abstract)];
@@ -279,11 +266,11 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
             uint32_t title_len = title_end - title_start + 1;
 
             // Title ngram must be at least 20 bytes len which results to about two normal length latin words or 5-7 chinese characters
-            if (title_len < 20 || title_len > 500) continue;
+            if (title_len < 10 || title_len > 512) continue;
 
             tried++;
             title_hash = text_hash56(output_text + title_start, title_end - title_start + 1);
-            //printf("Lookup: %ul %.*s\n", hash, title_end-title_start+1, output_text+title_start);
+            //printf("Lookup: %lu %.*s\n", title_hash, title_end-title_start+1, output_text+title_start);
 
             if (ht_get_slot(2, title_hash)) {
                 result->detected_titles++;

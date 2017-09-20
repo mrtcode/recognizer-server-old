@@ -187,6 +187,7 @@ int db_fields_init(char *path) {
         return 0;
     }
 
+    // Index on INTEGER only fields is faster
     sql = "CREATE TABLE IF NOT EXISTS fields (hash INTEGER, sum INTEGER, data BLOB, PRIMARY KEY (hash, sum))";
     if ((rc = sqlite3_exec(sqlite_fields, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
