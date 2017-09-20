@@ -227,20 +227,20 @@ int db_fhth_init(char *path) {
     }
 
     sql = "PRAGMA cache_size = 100000;";
-    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_fhth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         return 0;
     }
 
     sql = "PRAGMA journal_mode = WAL;";
-    if ((rc = sqlite3_exec(sqlite_fhth, sql, NULL, 0, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_fhth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         return 0;
     }
 
-    sql = "CREATE TABLE IF NOT EXISTS fhth (fh INTEGER, th INTEGER, PRIMARY KEY (fh, th))";
+    sql = "CREATE TABLE IF NOT EXISTS fhth (fh INTEGER, th INTEGER, PRIMARY KEY (fh, th)) WITHOUT ROWID";
     if ((rc = sqlite3_exec(sqlite_fhth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
@@ -248,7 +248,7 @@ int db_fhth_init(char *path) {
     }
 
     sql = "BEGIN TRANSACTION";
-    if ((rc = sqlite3_exec(sqlite_fhth, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_fhth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_fhth));
         sqlite3_free(err_msg);
         return 0;
@@ -280,20 +280,20 @@ int db_ahth_init(char *path) {
     }
 
     sql = "PRAGMA cache_size = 100000;";
-    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_ahth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         return 0;
     }
 
     sql = "PRAGMA journal_mode = WAL;";
-    if ((rc = sqlite3_exec(sqlite_ahth, sql, NULL, 0, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_ahth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         return 0;
     }
 
-    sql = "CREATE TABLE IF NOT EXISTS ahth (ah INTEGER, th INTEGER, PRIMARY KEY (ah, th))";
+    sql = "CREATE TABLE IF NOT EXISTS ahth (ah INTEGER, th INTEGER, PRIMARY KEY (ah, th)) WITHOUT ROWID";
     if ((rc = sqlite3_exec(sqlite_ahth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
@@ -301,7 +301,7 @@ int db_ahth_init(char *path) {
     }
 
     sql = "BEGIN TRANSACTION";
-    if ((rc = sqlite3_exec(sqlite_ahth, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_ahth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_ahth));
         sqlite3_free(err_msg);
         return 0;
