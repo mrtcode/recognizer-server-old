@@ -241,7 +241,7 @@ uint32_t text_process_fieldn(uint8_t *text, uint32_t text_len,
             break;
         }
 
-        if(i >= text_len) break;
+        if (i >= text_len) break;
 
         si = i;
         U8_NEXT(text, i, -1, ci);
@@ -294,20 +294,6 @@ uint32_t text_process_fieldn(uint8_t *text, uint32_t text_len,
     *output_text_len = output_text_offset;
 
     return 1;
-}
-
-uint32_t text_hash28(uint8_t *text, uint32_t text_len) {
-    XXH64_state_t state64;
-    XXH64_reset(&state64, 0);
-    XXH64_update(&state64, text, text_len);
-    return (uint32_t) (XXH64_digest(&state64) & 0xFFFFFFF);
-}
-
-uint64_t text_hash56(uint8_t *text, uint32_t text_len) {
-    XXH64_state_t state64;
-    XXH64_reset(&state64, 0);
-    XXH64_update(&state64, text, text_len);
-    return (XXH64_digest(&state64)) >> 8;
 }
 
 uint32_t text_hash32(uint8_t *text, uint32_t text_len) {

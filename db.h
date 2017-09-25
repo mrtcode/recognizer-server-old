@@ -12,13 +12,14 @@ typedef struct iterator {
     sqlite3_stmt *stmt2;
 } iterator_t;
 
-int db_init(char *directory);
+int db_normal_mode_init(char *directory);
+
+int db_indexing_mode_init(char *directory);
+
+int db_indexing_mode_finish();
 
 int db_close();
 
-int db_hashtable_init(char *path);
-
-int db_fields_init(char *path);
 
 int db_fields_save();
 

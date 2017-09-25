@@ -14,10 +14,10 @@ typedef struct stats {
     uint8_t th_slots_dist[ROW_SLOTS_MAX + 1];
 } stats_t;
 
-// 32
 #pragma pack(push, 1)
 typedef struct slot {
     uint32_t hash32;
+    uint8_t hash8;
 } slot_t;
 #pragma pack(pop)
 

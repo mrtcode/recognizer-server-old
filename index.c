@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <sqlite3.h>
 #include <time.h>
+#include <pthread.h>
 #include "ht.h"
 #include "db.h"
 #include "text.h"
@@ -37,6 +38,8 @@
 time_t updated_t = 0;
 
 uint64_t total_indexed = 0;
+
+extern pthread_rwlock_t data_rwlock;
 
 time_t index_updated_t() {
     return updated_t;
@@ -58,7 +61,10 @@ uint32_t insert_title(uint64_t title_hash, uint8_t *title) {
     data[0] = 1;
     memcpy(data + 1, title, title_len);
 
+    pthread_rwlock_wrlock(&data_rwlock);
     db_fields_insert(title_hash, data, 1 + title_len);
+    pthread_rwlock_unlock(&data_rwlock);
+
     return 1;
 }
 
@@ -76,7 +82,10 @@ uint32_t insert_authors(uint64_t title_hash, uint8_t *authors) {
     memcpy(data + 1, authors, authors_len);
     data_len = 1 + authors_len;
 
+    pthread_rwlock_wrlock(&data_rwlock);
     db_fields_insert(title_hash, data, data_len);
+    pthread_rwlock_unlock(&data_rwlock);
+
     return 1;
 }
 
@@ -86,7 +95,7 @@ uint32_t insert_abstract(uint64_t title_hash, uint8_t *abstract) {
     uint8_t processed_abstract[MAX_ABSTRACT_LEN + 1];
     uint32_t processed_abstract_len = MAX_ABSTRACT_LEN + 1;
 
-    if(!text_process_field(abstract, processed_abstract, &processed_abstract_len, 0)) return 0;
+    if (!text_process_field(abstract, processed_abstract, &processed_abstract_len, 0)) return 0;
 
     uint8_t data[11];
     data[0] = 3;
@@ -95,15 +104,19 @@ uint32_t insert_abstract(uint64_t title_hash, uint8_t *abstract) {
     // Rolling hash to speed up lookups
     *((uint32_t *) (data + 7)) = text_rh_get32(processed_abstract, processed_abstract_len);
 
-    db_fields_insert(title_hash, data, 11);
 
-    uint64_t abstract_hash = text_hash56(processed_abstract, HASHABLE_ABSTRACT_LEN);
+    uint64_t abstract_hash = text_hash64(processed_abstract, HASHABLE_ABSTRACT_LEN);
+
+    pthread_rwlock_wrlock(&data_rwlock);
+    db_fields_insert(title_hash, data, 11);
 
     if (!ht_get_slot(1, abstract_hash)) {
         ht_add_slot(1, abstract_hash);
     }
 
     db_ahth_insert(abstract_hash, title_hash);
+    pthread_rwlock_unlock(&data_rwlock);
+
 
     return 1;
 }
@@ -122,7 +135,10 @@ uint32_t insert_year(uint64_t title_hash, uint8_t *year) {
     data[0] = 4;
     *((uint16_t *) (data + 1)) = year_number;
 
+    pthread_rwlock_wrlock(&data_rwlock);
     db_fields_insert(title_hash, data, 3);
+    pthread_rwlock_unlock(&data_rwlock);
+
 
     return 1;
 }
@@ -151,7 +167,10 @@ uint32_t insert_identifiers(uint64_t title_hash, uint8_t *identifiers) {
         memcpy(data + 1, s, p - s);
         data_len = (uint32_t) (1 + p - s);
 
+        pthread_rwlock_wrlock(&data_rwlock);
         db_fields_insert(title_hash, data, data_len);
+        pthread_rwlock_unlock(&data_rwlock);
+
         count++;
     }
     return 1;
@@ -162,7 +181,11 @@ uint32_t insert_hash(uint64_t title_hash, uint8_t *hash) {
     uint8_t buf[17];
     strncpy(buf, hash, 16);
     uint64_t file_hash = strtoul(buf, 0, 16);
+
+    pthread_rwlock_wrlock(&data_rwlock);
     db_fhth_insert(file_hash, title_hash);
+    pthread_rwlock_unlock(&data_rwlock);
+
     return 1;
 }
 
@@ -176,12 +199,14 @@ uint32_t index_metadata(metadata_t *metadata) {
 
     if (processed_title_len < 5) return 0;
 
-    uint64_t title_hash = text_hash56(processed_title, processed_title_len);
+    uint64_t title_hash = text_hash64(processed_title, processed_title_len);
     //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
 
+    pthread_rwlock_wrlock(&data_rwlock);
     if (!ht_get_slot(2, title_hash)) {
         ht_add_slot(2, title_hash);
     }
+    pthread_rwlock_unlock(&data_rwlock);
 
     insert_title(title_hash, metadata->title);
     insert_authors(title_hash, metadata->authors);

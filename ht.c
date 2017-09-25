@@ -64,24 +64,21 @@ stats_t ht_stats() {
     return stats;
 }
 
-row_t *ht_row(uint64_t hash) {
-    uint32_t hash24 = (uint32_t) (hash >> 32);
-    return rows + hash24;
-}
-
 slot_t *ht_get_slot(uint8_t type, uint64_t hash) {
-    uint32_t hash24 = (uint32_t) (hash >> 32);
-    uint32_t hash32 = (uint32_t) (hash & 0xFFFFFFFF);
-    row_t *row = &rows[hash24];
+    uint32_t hash24 = (uint32_t) (hash >> 40);
+    uint32_t hash32 = (uint32_t) (hash >> 8);
+    uint8_t hash8 = (uint8_t) hash;
+    row_t *row = rows + hash24;
+
     if (type == 1) {
         for (uint32_t i = 0; i < row->ah_len; i++) {
-            if (row->slots[i].hash32 == hash32) {
+            if (row->slots[i].hash32 == hash32 && row->slots[i].hash8 == hash8) {
                 return &row->slots[i];
             }
         }
     } else {
         for (uint32_t i = 0; i < row->th_len; i++) {
-            if (row->slots[i].hash32 == hash32) {
+            if (row->slots[i].hash32 == hash32 && row->slots[i].hash8 == hash8) {
                 return &row->slots[i];
             }
         }
@@ -90,9 +87,10 @@ slot_t *ht_get_slot(uint8_t type, uint64_t hash) {
 }
 
 uint32_t ht_add_slot(uint8_t type, uint64_t hash) {
-    uint32_t hash23 = (uint32_t) (hash >> 32);
-    uint32_t hash32 = (uint32_t) (hash & 0xFFFFFFFF);
-    row_t *row = rows + hash23;
+    uint32_t hash24 = (uint32_t) (hash >> 40);
+    uint32_t hash32 = (uint32_t) (hash >> 8);
+    uint8_t hash8 = (uint8_t) hash;
+    row_t *row = rows + hash24;
 
     if ((type == 1 && row->ah_len == ROW_SLOTS_MAX) ||
         (type == 2 && row->th_len == ROW_SLOTS_MAX)) {
@@ -129,5 +127,6 @@ uint32_t ht_add_slot(uint8_t type, uint64_t hash) {
 
     slot = row->slots + i;
     slot->hash32 = hash32;
+    slot->hash8 = hash8;
     return 1;
 }

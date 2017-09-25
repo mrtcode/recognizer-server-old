@@ -245,7 +245,7 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
 
     if (output_text_len) {
         for (uint32_t i = 0; i < output_text_len - HASHABLE_ABSTRACT_LEN; i++) {
-            uint64_t abstract_hash = text_hash56(output_text + i, HASHABLE_ABSTRACT_LEN);
+            uint64_t abstract_hash = text_hash64(output_text + i, HASHABLE_ABSTRACT_LEN);
             if (ht_get_slot(1, abstract_hash)) {
                 result->detected_abstracts++;
                 sqlite3_stmt *stmt = db_ahth_get_stmt(abstract_hash);
@@ -269,7 +269,7 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
             if (title_len < 10 || title_len > 512) continue;
 
             tried++;
-            title_hash = text_hash56(output_text + title_start, title_end - title_start + 1);
+            title_hash = text_hash64(output_text + title_start, title_end - title_start + 1);
             //printf("Lookup: %lu %.*s\n", title_hash, title_end-title_start+1, output_text+title_start);
 
             if (ht_get_slot(2, title_hash)) {

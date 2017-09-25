@@ -31,23 +31,27 @@
 #include <jansson.h>
 #include <unicode/utf.h>
 #include <sqlite3.h>
+#include <dirent.h>
 #include "ht.h"
 #include "db.h"
 #include "text.h"
 #include "index.h"
 #include "recognize.h"
 #include "rh.h"
+#include "dedup.h"
 
 onion *on = NULL;
 pthread_rwlock_t data_rwlock;
 pthread_rwlock_t saver_rwlock;
+
+uint8_t indexing_mode = 0;
 
 json_t *authors_to_json(uint8_t *authors) {
     json_t *json_authors = json_array();
     uint8_t *p = authors;
     uint8_t *s;
 
-    uint8_t *first_name=0, *last_name=0;
+    uint8_t *first_name = 0, *last_name = 0;
     uint32_t first_name_len = 0, last_name_len = 0;
 
     while (1) {
@@ -175,7 +179,7 @@ onion_connection_status url_index(void *_, onion_request *req, onion_response *r
         }
 
         uint32_t indexed = 0;
-        pthread_rwlock_wrlock(&data_rwlock);
+//        pthread_rwlock_wrlock(&data_rwlock);
         if (json_is_array(root)) {
             uint32_t n = json_array_size(root);
             for (uint32_t i = 0; i < n; i++) {
@@ -202,7 +206,7 @@ onion_connection_status url_index(void *_, onion_request *req, onion_response *r
                 }
             }
         }
-        pthread_rwlock_unlock(&data_rwlock);
+//        pthread_rwlock_unlock(&data_rwlock);
 
         json_decref(root);
 
@@ -244,15 +248,28 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
     return OCS_PROCESSED;
 }
 
+int get_time(uint8_t *buf) {
+    time_t t;
+    struct tm *tnfo;
+
+    time(&t);
+    tnfo = localtime(&t);
+
+    strftime(buf, 26, "%Y-%m-%d %H:%M:%S", tnfo);
+}
+
 int save() {
+    uint8_t tbuf[26];
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
-    printf("saving\n");
+    get_time(tbuf);
+    printf("[%s] saving\n", tbuf);
     db_fields_save();
     db_fhth_save();
     db_ahth_save();
     ht_save();
-    printf("saved\n");
+    get_time(tbuf);
+    printf("[%s] saved\n", tbuf);
     pthread_rwlock_unlock(&data_rwlock);
     pthread_rwlock_unlock(&saver_rwlock);
 }
@@ -261,6 +278,8 @@ void *saver_thread(void *arg) {
     uint64_t saver_last_total = 0;
     uint64_t indicator_last_total = 0;
     time_t indicator_t = 0;
+
+    uint8_t tbuf[26];
 
     while (1) {
         usleep(50000);
@@ -275,7 +294,9 @@ void *saver_thread(void *arg) {
 
         if (current_total_indexed > indicator_last_total) {
             if (indicator_t + 30 <= t) {
-                printf("indexed total=%u, per_second=%u\n",
+                get_time(tbuf);
+                printf("[%s] indexed total=%u, per_second=%u\n",
+                       tbuf,
                        current_total_indexed,
                        (current_total_indexed - indicator_last_total) / (t - indicator_t));
                 indicator_last_total = current_total_indexed;
@@ -285,15 +306,17 @@ void *saver_thread(void *arg) {
             indicator_t = t;
         }
 
-        if (current_total_indexed > saver_last_total) {
-            if (t - index_updated_t() >= 10) {
-                save();
-                saver_last_total = current_total_indexed;
+        if (!indexing_mode) {
+            if (current_total_indexed > saver_last_total) {
+                if (t - index_updated_t() >= 10) {
+                    save();
+                    saver_last_total = current_total_indexed;
+                }
             }
-        }
 
-        if (db_fields_in_transaction() >= 50000000) {
-            save();
+            if (db_fields_in_transaction() >= 50000000) {
+                save();
+            }
         }
     }
 }
@@ -307,11 +330,19 @@ void signal_handler(int signum) {
         onion_listen_stop(on);
     }
 
-    printf("saving everything\n");
-    db_fields_save();
-    db_fhth_save();
-    db_ahth_save();
-    ht_save();
+    if (indexing_mode) {
+        printf("finalizing indexing mode\n");
+        ht_save();
+        db_indexing_mode_finish();
+        printf("finished\n");
+    } else {
+        printf("saving\n");
+        ht_save();
+        db_fields_save();
+        db_fhth_save();
+        db_ahth_save();
+        printf("saved\n");
+    }
 
     if (!db_close()) {
         fprintf(stderr, "db close failed\n");
@@ -335,13 +366,16 @@ int main(int argc, char **argv) {
     char *opt_port = 0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:p:i")) != -1) {
         switch (opt) {
             case 'd':
                 opt_db_directory = optarg;
                 break;
             case 'p':
                 opt_port = optarg;
+                break;
+            case 'i':
+                indexing_mode = 1;
                 break;
             default:
                 print_usage();
@@ -354,6 +388,30 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    DIR *dir = opendir(opt_db_directory);
+    if (!dir) {
+        fprintf(stderr, "database directory is invalid\n");
+        return EXIT_FAILURE;
+    }
+
+    if (indexing_mode) {
+        printf("starting in indexing mode\n");
+        uint32_t n = 0;
+        while (readdir(dir)) {
+            n++;
+            if (n == 3) {
+                fprintf(stderr, "database directory must be empty to start in indexing mode\n");
+                return EXIT_FAILURE;
+            }
+        }
+
+        if (!dedup_init()) {
+            fprintf(stderr, "failed to initialize deduplicator\n");
+            return EXIT_FAILURE;
+        }
+    }
+    closedir(dir);
+
     setenv("ONION_LOG", "noinfo", 1);
     pthread_rwlock_init(&data_rwlock, 0);
     pthread_rwlock_init(&saver_rwlock, 0);
@@ -363,9 +421,16 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (!db_init(opt_db_directory)) {
-        fprintf(stderr, "failed to initialize db\n");
-        return EXIT_FAILURE;
+    if (indexing_mode) {
+        if (!db_indexing_mode_init(opt_db_directory)) {
+            fprintf(stderr, "failed to initialize db indexing mode\n");
+            return EXIT_FAILURE;
+        }
+    } else {
+        if (!db_normal_mode_init(opt_db_directory)) {
+            fprintf(stderr, "failed to initialize db normal mode\n");
+            return EXIT_FAILURE;
+        }
     }
 
     if (!ht_init()) {
