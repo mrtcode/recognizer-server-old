@@ -179,7 +179,6 @@ onion_connection_status url_index(void *_, onion_request *req, onion_response *r
         }
 
         uint32_t indexed = 0;
-//        pthread_rwlock_wrlock(&data_rwlock);
         if (json_is_array(root)) {
             uint32_t n = json_array_size(root);
             for (uint32_t i = 0; i < n; i++) {
@@ -206,7 +205,6 @@ onion_connection_status url_index(void *_, onion_request *req, onion_response *r
                 }
             }
         }
-//        pthread_rwlock_unlock(&data_rwlock);
 
         json_decref(root);
 
@@ -330,18 +328,24 @@ void signal_handler(int signum) {
         onion_listen_stop(on);
     }
 
+    uint8_t tbuf[26];
+
     if (indexing_mode) {
-        printf("finalizing indexing mode\n");
+        get_time(tbuf);
+        printf("[%s] finalizing indexing mode\n", tbuf);
         ht_save();
         db_indexing_mode_finish();
-        printf("finished\n");
+        get_time(tbuf);
+        printf("[%s] finished\n", tbuf);
     } else {
-        printf("saving\n");
+        get_time(tbuf);
+        printf("[%s] saving\n", tbuf);
         ht_save();
         db_fields_save();
         db_fhth_save();
         db_ahth_save();
-        printf("saved\n");
+        get_time(tbuf);
+        printf("[%s] saved\n", tbuf);
     }
 
     if (!db_close()) {
@@ -358,7 +362,14 @@ void signal_handler(int signum) {
 }
 
 void print_usage() {
-    printf("Missing parameters.\nUsage example:\nrecognizer-server -d /var/db -p 8080\n");
+    printf(
+            "Missing parameters.\n" \
+            "-d\tdata directory\n" \
+            "-p\tport\n" \
+            "-i\tstart in indexing mode (TEMPORARY DISABLED)\n" \
+            "Usage example:\n" \
+            "recognizer-server -d /var/db -p 8080\n"
+    );
 }
 
 int main(int argc, char **argv) {
@@ -374,9 +385,9 @@ int main(int argc, char **argv) {
             case 'p':
                 opt_port = optarg;
                 break;
-            case 'i':
-                indexing_mode = 1;
-                break;
+//            case 'i':
+//                indexing_mode = 1;
+//                break;
             default:
                 print_usage();
                 return EXIT_FAILURE;
@@ -394,23 +405,27 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (indexing_mode) {
-        printf("starting in indexing mode\n");
-        uint32_t n = 0;
-        while (readdir(dir)) {
-            n++;
-            if (n == 3) {
-                fprintf(stderr, "database directory must be empty to start in indexing mode\n");
-                return EXIT_FAILURE;
-            }
-        }
+    indexing_mode = 1;
 
+    uint32_t n = 0;
+    while (readdir(dir)) {
+        n++;
+        if (n == 3) {
+            indexing_mode = 0;
+            break;
+        }
+    }
+    closedir(dir);
+
+    if (indexing_mode) {
         if (!dedup_init()) {
             fprintf(stderr, "failed to initialize deduplicator\n");
             return EXIT_FAILURE;
         }
+        printf("starting in indexing mode\n");
+    } else {
+        printf("starting in normal mode\n");
     }
-    closedir(dir);
 
     setenv("ONION_LOG", "noinfo", 1);
     pthread_rwlock_init(&data_rwlock, 0);

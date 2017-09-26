@@ -68,18 +68,11 @@ int db_normal_mode_init(char *directory) {
         return 0;
     }
 
-
     // ht
     if ((rc = sqlite3_open(path_ht, &sqlite_ht)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_ht, rc, sqlite3_errmsg(sqlite_ht));
         return 0;
     }
-
-
-
-
-
-
 
     // fields
     if ((rc = sqlite3_open(path_fields, &sqlite_fields)) != SQLITE_OK) {
@@ -88,7 +81,7 @@ int db_normal_mode_init(char *directory) {
     }
 
     sql = "PRAGMA journal_mode = WAL;";
-    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, 0)) != SQLITE_OK) {
+    if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         return 0;
@@ -112,21 +105,11 @@ int db_normal_mode_init(char *directory) {
         return 0;
     }
 
-
-
-
-
-
-
-
-
-
     // fhth
     if ((rc = sqlite3_open(path_fhth, &sqlite_fhth)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_fhth, rc, sqlite3_errmsg(sqlite_fhth));
         return 0;
     }
-
 
     sql = "PRAGMA journal_mode = WAL;";
     if ((rc = sqlite3_exec(sqlite_fhth, sql, 0, 0, &err_msg)) != SQLITE_OK) {
@@ -152,13 +135,6 @@ int db_normal_mode_init(char *directory) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_fhth, rc, sqlite3_errmsg(sqlite_fhth_read));
         return 0;
     }
-
-
-
-
-
-
-
 
     // ahth
     if ((rc = sqlite3_open(path_ahth, &sqlite_ahth)) != SQLITE_OK) {
@@ -191,7 +167,6 @@ int db_normal_mode_init(char *directory) {
         return 0;
     }
 
-
     return 1;
 }
 
@@ -217,10 +192,7 @@ int db_indexing_mode_init(char *directory) {
         return 0;
     }
 
-
-
-
-    // Hashtable
+    // ht
     if ((rc = sqlite3_open(path_ht, &sqlite_ht)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_ht, rc, sqlite3_errmsg(sqlite_ht));
         return 0;
@@ -240,10 +212,7 @@ int db_indexing_mode_init(char *directory) {
         return 0;
     }
 
-
-
-
-    // Fields
+    // fields
     if ((rc = sqlite3_open(path_fields, &sqlite_fields)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_fields, rc, sqlite3_errmsg(sqlite_fields));
         return 0;
@@ -282,9 +251,7 @@ int db_indexing_mode_init(char *directory) {
         return 0;
     }
 
-
-
-    // File Hash - Title Hash
+    // fhth
     if ((rc = sqlite3_open(path_fhth, &sqlite_fhth)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_fhth, rc, sqlite3_errmsg(sqlite_fhth));
         return 0;
@@ -322,9 +289,7 @@ int db_indexing_mode_init(char *directory) {
         return 0;
     }
 
-
-
-    // Abstract Hash - Title Hash
+    // ahth
     if ((rc = sqlite3_open(path_ahth, &sqlite_ahth)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_open: %s (%d): %s\n", path_ahth, rc, sqlite3_errmsg(sqlite_ahth));
         return 0;
@@ -371,7 +336,6 @@ int db_indexing_mode_finish() {
     int rc;
     char *err_msg;
 
-
     sql = "CREATE INDEX idx_ht ON ht (id)";
     if ((rc = sqlite3_exec(sqlite_ht, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
@@ -379,10 +343,7 @@ int db_indexing_mode_finish() {
         return 0;
     }
 
-
-
-
-    // Fields
+    // fields
     sql = "CREATE UNIQUE INDEX idx_fields ON fields (th,dh)";
     if ((rc = sqlite3_exec(sqlite_fields, sql, 0, 0, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%d): %s\n", sql, rc, err_msg);
@@ -396,9 +357,6 @@ int db_indexing_mode_finish() {
         sqlite3_free(err_msg);
         return 0;
     }
-
-
-
 
     // fhth
     sql = "CREATE UNIQUE INDEX idx_fhth ON fhth (fh,th)";
@@ -414,9 +372,6 @@ int db_indexing_mode_finish() {
         sqlite3_free(err_msg);
         return 0;
     }
-
-
-
 
     // ahth
     sql = "CREATE UNIQUE INDEX idx_ahth ON ahth (ah,th)";
@@ -440,7 +395,7 @@ int db_close() {
     int rc;
     printf("closing db\n");
 
-    // hashtable
+    // ht
     if ((rc = sqlite3_close(sqlite_ht)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_close: (%d): %s\n", rc, sqlite3_errmsg(sqlite_ht));
         return 0;
@@ -494,7 +449,6 @@ int db_close() {
         return 0;
     }
 
-
     return 1;
 }
 
@@ -507,14 +461,14 @@ int db_fields_save() {
     if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_fields));
         sqlite3_free(err_msg);
-        return 0;
+        //return 0;
     }
 
     sql = "BEGIN TRANSACTION";
     if ((rc = sqlite3_exec(sqlite_fields, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_fields));
         sqlite3_free(err_msg);
-        return 0;
+        //return 0;
     }
     fields_in_transaction = 0;
     return 1;
@@ -527,14 +481,14 @@ int db_fhth_save() {
 
     sql = "END TRANSACTION";
     if ((rc = sqlite3_exec(sqlite_fhth, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
-        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_fhth));
+        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         //return 0;
     }
 
     sql = "BEGIN TRANSACTION";
     if ((rc = sqlite3_exec(sqlite_fhth, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
-        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_fhth));
+        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         //return 0;
     }
@@ -549,14 +503,14 @@ int db_ahth_save() {
 
     sql = "END TRANSACTION";
     if ((rc = sqlite3_exec(sqlite_ahth, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
-        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_ahth));
+        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         //return 0;
     }
 
     sql = "BEGIN TRANSACTION";
     if ((rc = sqlite3_exec(sqlite_ahth, sql, NULL, NULL, &err_msg)) != SQLITE_OK) {
-        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_ahth));
+        fprintf(stderr, "sqlite3_exec: %s (%i): %s\n", sql, rc, err_msg);
         sqlite3_free(err_msg);
         //return 0;
     }
@@ -569,7 +523,11 @@ int db_fields_insert(uint64_t th, uint8_t *data, uint32_t data_len) {
 
     uint64_t dh = text_hash64(data, data_len) >> 24; // 40 bit
 
-    if (indexing_mode && !dedup_fields(th, dh)) return 0;
+    if (indexing_mode) {
+        rc = dedup_fields(th, dh);
+        if (rc == DEDUP_ERROR) return 0;
+        if (rc == DEDUP_DUPLICATED) return 1;
+    }
 
     if ((rc = sqlite3_bind_int64(fields_insert_stmt, 1, th)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_bind_int64: (%i): %s\n", rc, sqlite3_errmsg(sqlite_fields));
@@ -585,7 +543,6 @@ int db_fields_insert(uint64_t th, uint8_t *data, uint32_t data_len) {
         fprintf(stderr, "sqlite3_bind_text: (%i): %s\n", rc, sqlite3_errmsg(sqlite_fields));
         return 0;
     }
-
 
     if ((rc = sqlite3_step(fields_insert_stmt)) != SQLITE_DONE) {
         fprintf(stderr, "sqlite3_step: (%i): %s\n", rc, sqlite3_errmsg(sqlite_fields));
@@ -604,7 +561,11 @@ int db_fields_insert(uint64_t th, uint8_t *data, uint32_t data_len) {
 int db_fhth_insert(uint64_t fh, uint64_t th) {
     int rc;
 
-    if (indexing_mode && !dedup_fhth(fh, th)) return 0;
+    if (indexing_mode) {
+        rc = dedup_fhth(fh, th);
+        if (rc == DEDUP_ERROR) return 0;
+        if (rc == DEDUP_DUPLICATED) return 1;
+    }
 
     if ((rc = sqlite3_bind_int64(fhth_insert_stmt, 1, fh)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_bind_text: (%i): %s\n", rc, sqlite3_errmsg(sqlite_fhth));
@@ -633,7 +594,11 @@ int db_fhth_insert(uint64_t fh, uint64_t th) {
 int db_ahth_insert(uint64_t ah, uint64_t th) {
     int rc;
 
-    if (indexing_mode && !dedup_ahth(ah, th)) return 0;
+    if (indexing_mode) {
+        rc = dedup_ahth(ah, th);
+        if (rc == DEDUP_ERROR) return 0;
+        if (rc == DEDUP_DUPLICATED) return 1;
+    }
 
     if ((rc = sqlite3_bind_int64(ahth_insert_stmt, 1, ah)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_bind_text: (%i): %s\n", rc, sqlite3_errmsg(sqlite_ahth));
@@ -727,18 +692,18 @@ uint64_t db_ahth_get_next_th(sqlite3_stmt *stmt) {
     return 0;
 }
 
-sqlite3_stmt *db_get_fields_stmt(uint64_t hash) {
+sqlite3_stmt *db_get_fields_stmt(uint64_t th) {
     char *sql;
     int rc;
 
     sqlite3_stmt *stmt = NULL;
-    sql = "SELECT data FROM fields WHERE hash = ?";
+    sql = "SELECT data FROM fields WHERE th = ?";
     if ((rc = sqlite3_prepare_v2(sqlite_fields_read, sql, -1, &stmt, NULL)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_prepare_v2: %s (%i): %s\n", sql, rc, sqlite3_errmsg(sqlite_fields_read));
         return 0;
     }
 
-    if ((rc = sqlite3_bind_int64(stmt, 1, hash)) != SQLITE_OK) {
+    if ((rc = sqlite3_bind_int64(stmt, 1, th)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_bind_int64: (%i): %s\n", rc, sqlite3_errmsg(sqlite_fields_read));
         return 0;
     }

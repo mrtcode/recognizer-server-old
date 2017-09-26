@@ -28,6 +28,7 @@
 #include "dedup.h"
 
 #define ROWS 16777216
+#define ROW_SLOTS_MAX 16384
 
 typedef struct row {
     uint8_t *slots;
@@ -39,10 +40,22 @@ row_t *fhth_rows = 0;
 row_t *ahth_rows = 0;
 
 int dedup_init() {
-    fields_rows = calloc(ROWS, sizeof(row_t));
-    fhth_rows = calloc(ROWS, sizeof(row_t));
-    ahth_rows = calloc(ROWS, sizeof(row_t));
-    return 1;
+    if (!(fields_rows = calloc(ROWS, sizeof(row_t)))) {
+        fprintf(stderr, "fields_rows calloc error\n");
+        return DEDUP_ERROR;
+    }
+
+    if (!(fhth_rows = calloc(ROWS, sizeof(row_t)))) {
+        fprintf(stderr, "fhth_rows calloc error\n");
+        return DEDUP_ERROR;
+    }
+
+    if (!(ahth_rows = calloc(ROWS, sizeof(row_t)))) {
+        fprintf(stderr, "ahth_rows calloc error\n");
+        return DEDUP_ERROR;
+    }
+
+    return DEDUP_SUCCESS;
 }
 
 // 24 + 40 + 40 (24 + 64 + 16)
@@ -57,25 +70,25 @@ uint8_t dedup_fields(uint64_t th, uint64_t dh) {
         for (uint32_t i = 0; i < row->slots_len; i++) {
             if (*((uint64_t *) (row->slots + slot_size * i)) == hash64 &&
                 *((uint16_t *) (row->slots + slot_size * i + 8)) == hash16) {
-                return 0;
+                return DEDUP_DUPLICATED;
             }
         }
     }
 
-    if ((row->slots_len == 1000)) {
+    if ((row->slots_len == ROW_SLOTS_MAX)) {
         fprintf(stderr, "reached ROW_SLOTS_MAX limit\n");
-        return 0;
+        return DEDUP_ERROR;
     }
 
     if (row->slots) {
         if (!(row->slots = realloc(row->slots, slot_size * (row->slots_len + 1)))) {
             fprintf(stderr, "slot realloc failed\n");
-            return 0;
+            return DEDUP_ERROR;
         }
     } else {
         if (!(row->slots = malloc(slot_size))) {
             fprintf(stderr, "slot malloc failed\n");
-            return 0;
+            return DEDUP_ERROR;
         }
     }
 
@@ -84,7 +97,7 @@ uint8_t dedup_fields(uint64_t th, uint64_t dh) {
 
     row->slots_len++;
 
-    return 1;
+    return DEDUP_SUCCESS;
 }
 
 // 24 + 40 + 64 (24 + 64 + 32 + 8)
@@ -101,25 +114,25 @@ uint8_t dedup_fhth(uint64_t fh, uint64_t th) {
             if (*((uint64_t *) (row->slots + slot_size * i)) == hash64 &&
                 *((uint32_t *) (row->slots + slot_size * i + 8)) == hash32 &&
                 *((uint8_t *) (row->slots + slot_size * i + 8 + 4)) == hash8) {
-                return 0;
+                return DEDUP_DUPLICATED;
             }
         }
     }
 
-    if ((row->slots_len == 1000)) {
+    if ((row->slots_len == ROW_SLOTS_MAX)) {
         fprintf(stderr, "reached ROW_SLOTS_MAX limit\n");
-        return 0;
+        return DEDUP_ERROR;
     }
 
     if (row->slots) {
         if (!(row->slots = realloc(row->slots, slot_size * (row->slots_len + 1)))) {
             fprintf(stderr, "slot realloc failed\n");
-            return 0;
+            return DEDUP_ERROR;
         }
     } else {
         if (!(row->slots = malloc(slot_size))) {
             fprintf(stderr, "slot malloc failed\n");
-            return 0;
+            return DEDUP_ERROR;
         }
     }
 
@@ -129,7 +142,7 @@ uint8_t dedup_fhth(uint64_t fh, uint64_t th) {
 
     row->slots_len++;
 
-    return 1;
+    return DEDUP_SUCCESS;
 }
 
 // 24 + 40 + 64 (24 + 64 + 32 + 8)
@@ -147,25 +160,25 @@ uint8_t dedup_ahth(uint64_t ah, uint64_t th) {
             if (*((uint64_t *) (row->slots + slot_size * i)) == hash64 &&
                 *((uint32_t *) (row->slots + slot_size * i + 8)) == hash32 &&
                 *((uint8_t *) (row->slots + slot_size * i + 8 + 4)) == hash8) {
-                return 0;
+                return DEDUP_DUPLICATED;
             }
         }
     }
 
-    if ((row->slots_len == 1000)) {
+    if ((row->slots_len == ROW_SLOTS_MAX)) {
         fprintf(stderr, "reached ROW_SLOTS_MAX limit\n");
-        return 0;
+        return DEDUP_ERROR;
     }
 
     if (row->slots) {
         if (!(row->slots = realloc(row->slots, slot_size * (row->slots_len + 1)))) {
             fprintf(stderr, "slot realloc failed\n");
-            return 0;
+            return DEDUP_ERROR;
         }
     } else {
         if (!(row->slots = malloc(slot_size))) {
             fprintf(stderr, "slot malloc failed\n");
-            return 0;
+            return DEDUP_ERROR;
         }
     }
 
@@ -175,5 +188,5 @@ uint8_t dedup_ahth(uint64_t ah, uint64_t th) {
 
     row->slots_len++;
 
-    return 1;
+    return DEDUP_SUCCESS;
 }

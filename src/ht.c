@@ -77,7 +77,7 @@ slot_t *ht_get_slot(uint8_t type, uint64_t hash) {
             }
         }
     } else {
-        for (uint32_t i = 0; i < row->th_len; i++) {
+        for (uint32_t i = row->ah_len; i < row->ah_len+row->th_len; i++) {
             if (row->slots[i].hash32 == hash32 && row->slots[i].hash8 == hash8) {
                 return &row->slots[i];
             }

@@ -1,4 +1,5 @@
 .*
-cmake*
+cmake*/
 db
 !.gitignore
+!.dockerignore

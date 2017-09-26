@@ -51,18 +51,19 @@ RUN apt-get update \
 
     && ldconfig
 
-RUN cd /tmp \
-    && git clone https://github.com/mrtcode/recognizer-server \
-    && cd recognizer-server \
+COPY ./src /data/src
+COPY ./CMakeLists.txt /data/
+COPY ./static /data/static
+
+RUN cd /data/ \
     && mkdir release \
     && cd release \
     && cmake -DCMAKE_BUILD_TYPE=Release .. \
     && make \
-    && mkdir -p /data/bin \
-    && mkdir -p /data/db \
-    && cp recognizer-server /data/bin/ \
-    && cp -r ../static /data/bin/
+    && cp recognizer-server /data/ \
+    && mkdir -p /data/db
 
-WORKDIR /data/bin
 
-ENTRYPOINT ["/data/bin/recognizer-server", "-d", "/data/db", "-p", "80"]
+WORKDIR /data
+
+ENTRYPOINT ["/data/recognizer-server", "-d", "/data/db", "-p", "80"]

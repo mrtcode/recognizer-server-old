@@ -243,7 +243,7 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
         }
     }
 
-    if (output_text_len) {
+    if (output_text_len >= HASHABLE_ABSTRACT_LEN) {
         for (uint32_t i = 0; i < output_text_len - HASHABLE_ABSTRACT_LEN; i++) {
             uint64_t abstract_hash = text_hash64(output_text + i, HASHABLE_ABSTRACT_LEN);
             if (ht_get_slot(1, abstract_hash)) {

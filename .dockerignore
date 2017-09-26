@@ -1,0 +1,2 @@
+# Docker building is super slow if there are large files in current dir, therefore we ignore them
+db*
