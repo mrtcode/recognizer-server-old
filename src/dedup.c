@@ -138,7 +138,7 @@ uint8_t dedup_fhth(uint64_t fh, uint64_t th) {
 
     *((uint64_t *) (row->slots + slot_size * row->slots_len)) = hash64;
     *((uint32_t *) (row->slots + slot_size * row->slots_len + 8)) = hash32;
-    *((uint8_t *) (row->slots + slot_size * row->slots_len + 8 + 4)) = hash32;
+    *((uint8_t *) (row->slots + slot_size * row->slots_len + 8 + 4)) = hash8;
 
     row->slots_len++;
 
