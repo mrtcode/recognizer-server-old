@@ -179,7 +179,8 @@ uint32_t insert_identifiers(uint64_t title_hash, uint8_t *identifiers) {
 uint32_t insert_hash(uint64_t title_hash, uint8_t *hash) {
     if (!hash || strlen(hash) != 32) return 0;
     uint8_t buf[17];
-    strncpy(buf, hash, 16);
+    memcpy(buf, hash, 16);
+    buf[16] = 0;
     uint64_t file_hash = strtoul(buf, 0, 16);
 
     pthread_rwlock_wrlock(&data_rwlock);

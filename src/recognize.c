@@ -155,8 +155,10 @@ int add_identifier(result_t *result, uint64_t title_hash, uint8_t *identifier, u
         if (!*p && !*v) return 0;
     }
 
+    // Todo: Check if identifiers array isn't full
     result->identifiers[result->identifiers_len].title_hash = title_hash;
-    strncpy(result->identifiers[result->identifiers_len].str, identifier, identifier_len);
+    memcpy(result->identifiers[result->identifiers_len].str, identifier, identifier_len);
+    result->identifiers[result->identifiers_len].str[identifier_len] = 0;
 
     result->identifiers_len++;
 
@@ -179,13 +181,15 @@ int get_data(result_t *result, uint8_t *text, uint64_t title_hash,
             int ret = match_title(output_text, 0, data, data_len);
 
             if (ret && strlen(metadata.title) < data_len - 1) {
-                strncpy(metadata.title, data + 1, data_len - 1);
+                memcpy(metadata.title, data + 1, data_len - 1);
+                metadata.title[data_len - 1] = 0;
             }
         } else if (data[0] == 2) {
             int ret = match_authors(output_text, data, data_len);
 
             if (ret && strlen(metadata.authors) < data_len - 1) {
-                strncpy(metadata.authors, data + 1, data_len - 1);
+                memcpy(metadata.authors, data + 1, data_len - 1);
+                metadata.authors[data_len - 1] = 0;
             }
         } else if (data[0] == 3) {
             uint8_t abstract[sizeof(metadata.abstract)];
@@ -234,7 +238,8 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
     uint64_t title_hash = 0;
     if (file_hash_str && strlen(file_hash_str) == 32) {
         uint8_t buf[17];
-        strncpy(buf, file_hash_str, 16);
+        memcpy(buf, file_hash_str, 16);
+        buf[16] = 0;
         uint64_t file_hash = strtoul(buf, 0, 16);
         sqlite3_stmt *stmt = db_fhth_get_stmt(file_hash);
         while ((title_hash = db_fhth_get_next_th(stmt))) {
