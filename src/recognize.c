@@ -33,6 +33,9 @@
 #include "text.h"
 #include "index.h"
 #include "recognize.h"
+#include "log.h"
+
+#define MAX_MH 10
 
 // Only a very basic implementation
 int match_title(uint8_t *processed_text, uint32_t processed_text_len,
@@ -49,7 +52,7 @@ int match_title(uint8_t *processed_text, uint32_t processed_text_len,
         while (p - data < data_len - 1 && (*p == ' ' || *p == '\t' || *p == '\n')) p++;
         if (p - data >= data_len - 1) break;
         s = p;
-        while (p - data < data_len - 1 && *p != ' ' && *p != '\t' && *p != '\n') p++;
+        while (p - data <= data_len - 1 && *p != ' ' && *p != '\t' && *p != '\n') p++;
 
         tokens_total++;
 
@@ -62,7 +65,7 @@ int match_title(uint8_t *processed_text, uint32_t processed_text_len,
         if (v) tokens_found++;
     }
 
-    if (tokens_total && tokens_found * 100 / tokens_total >= 50) return 1;
+    if (tokens_total && tokens_found * 100 / tokens_total >= 70) return 1;
     return 0;
 }
 
@@ -79,7 +82,7 @@ int match_authors(uint8_t *processed_text, uint8_t *data, uint32_t data_len) {
         while (p - data < data_len - 1 && (*p == '\t' || *p == '\n')) p++;
         if (p - data >= data_len - 1) break;
         s = p;
-        while (p - data < data_len - 1 && *p != '\t' && *p != '\n') p++;
+        while (p - data <= data_len - 1 && *p != '\t' && *p != '\n') p++;
 
         if (*p == '\t') {
             first_name = s;
@@ -96,7 +99,7 @@ int match_authors(uint8_t *processed_text, uint8_t *data, uint32_t data_len) {
         }
     }
 
-    if (authors_total && authors_found * 100 / authors_total >= 50) return 1;
+    if (authors_total && authors_found * 100 / authors_total >= 70) return 1;
     return 0;
 }
 
@@ -139,42 +142,16 @@ int32_t get_year_offset(uint8_t *original_text, uint32_t original_text_len, uint
     return -1;
 }
 
-int add_identifier(result_t *result, uint64_t title_hash, uint8_t *identifier, uint32_t identifier_len) {
-    if (result->identifiers_len == sizeof(result->identifiers) / sizeof(res_identifier_t)) {
-        return 0;
-    }
-
-    for (uint32_t i = 0; i < result->identifiers_len; i++) {
-        uint8_t *p = result->identifiers[i].str;
-        uint8_t *v = identifier;
-        while (*p && *v) {
-            if (*p != *v) break;
-            p++;
-            v++;
-        }
-        if (!*p && !*v) return 0;
-    }
-
-    // Todo: Check if identifiers array isn't full
-    result->identifiers[result->identifiers_len].title_hash = title_hash;
-    memcpy(result->identifiers[result->identifiers_len].str, identifier, identifier_len);
-    result->identifiers[result->identifiers_len].str[identifier_len] = 0;
-
-    result->identifiers_len++;
-
-    return 1;
-}
-
-int get_data(result_t *result, uint8_t *text, uint64_t title_hash,
+int get_data(result_t *result, uint8_t *text, uint64_t metadata_hash,
              uint8_t *output_text, uint32_t output_text_len, uint32_t *map, uint32_t map_len) {
-    sqlite3_stmt *stmt = db_get_fields_stmt(title_hash);
+    sqlite3_stmt *stmt = db_get_fields_stmt(metadata_hash);
 
     uint8_t *data;
     uint32_t data_len;
 
     res_metadata_t metadata = {0};
 
-    metadata.title_hash = title_hash;
+    metadata.metadata_hash = metadata_hash;
 
     while (db_get_next_field(stmt, &data, &data_len)) {
         if (data[0] == 1) {
@@ -209,7 +186,9 @@ int get_data(result_t *result, uint8_t *text, uint64_t title_hash,
                 metadata.year_offset = offset;
             }
         } else if (data[0] == 5) {
-            add_identifier(result, title_hash, data + 1, data_len - 1);
+            if (metadata.identifiers_len < MAX_IDENTIFIERS) {
+                memcpy(metadata.identifiers[metadata.identifiers_len++], data + 1, data_len - 1);
+            }
         }
     }
 
@@ -241,10 +220,16 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
         memcpy(buf, file_hash_str, 16);
         buf[16] = 0;
         uint64_t file_hash = strtoul(buf, 0, 16);
-        sqlite3_stmt *stmt = db_fhth_get_stmt(file_hash);
-        while ((title_hash = db_fhth_get_next_th(stmt))) {
-            result->detected_titles_through_hash++;
-            get_data(result, text, title_hash, output_text, output_text_len, map, map_len);
+
+        uint64_t mhs[100];
+        uint32_t mhs_len = 100;
+        db_fhmhs(file_hash, mhs, &mhs_len);
+
+        if (mhs_len <= MAX_MH) {
+            for (uint32_t i = 0; i < mhs_len; i++) {
+                result->detected_metadata_through_hash++;
+                get_data(result, text, mhs[i], output_text, output_text_len, map, map_len);
+            }
         }
     }
 
@@ -253,10 +238,16 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
             uint64_t abstract_hash = text_hash64(output_text + i, HASHABLE_ABSTRACT_LEN);
             if (ht_get_slot(1, abstract_hash)) {
                 result->detected_abstracts++;
-                sqlite3_stmt *stmt = db_ahth_get_stmt(abstract_hash);
-                while ((title_hash = db_ahth_get_next_th(stmt))) {
-                    result->detected_titles_through_abstract++;
-                    get_data(result, text, title_hash, output_text, output_text_len, map, map_len);
+
+                uint64_t mhs[100];
+                uint32_t mhs_len = 100;
+                db_ahmhs(abstract_hash, mhs, &mhs_len);
+
+                if (mhs_len <= MAX_MH) {
+                    for (uint32_t j = 0; j < mhs_len; j++) {
+                        result->detected_metadata_through_abstract++;
+                        get_data(result, text, mhs[j], output_text, output_text_len, map, map_len);
+                    }
                 }
             }
         }
@@ -264,7 +255,7 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
 
     uint32_t tried = 0;
     for (uint32_t i = 0; i < lines_len && tried <= 1000; i++) {
-        for (uint32_t j = i; j < i + 5 && j < lines_len; j++) {
+        for (uint32_t j = i; j < i + 6 && j < lines_len; j++) {
 
             uint32_t title_start = lines[i].start;
             uint32_t title_end = lines[j].end;
@@ -279,11 +270,21 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
 
             if (ht_get_slot(2, title_hash)) {
                 result->detected_titles++;
-                get_data(result, text, title_hash, output_text, output_text_len, map, map_len);
+
+                uint64_t mhs[100];
+                uint32_t mhs_len = 100;
+                db_thmhs(title_hash, mhs, &mhs_len);
+
+                if (mhs_len <= MAX_MH) {
+                    for (uint32_t k = 0; k < mhs_len; k++) {
+                        result->detected_metadata_through_title++;
+                        get_data(result, text, mhs[k], output_text, output_text_len, map, map_len);
+                    }
+                }
             }
         }
     }
 
-    if (result->metadata.title_hash || strlen(result->identifiers)) return 1;
+    if (result->metadata.metadata_hash) return 1;
     return 0;
 }

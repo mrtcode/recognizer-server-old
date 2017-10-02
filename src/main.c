@@ -39,6 +39,7 @@
 #include "recognize.h"
 #include "rh.h"
 #include "dedup.h"
+#include "log.h"
 
 onion *on = NULL;
 pthread_rwlock_t data_rwlock;
@@ -82,8 +83,8 @@ json_t *authors_to_json(uint8_t *authors) {
 json_t *get_identifiers_json(result_t *result) {
     json_t *json_identifiers = json_array();
 
-    for (uint32_t i = 0; i < result->identifiers_len; i++) {
-        json_array_append(json_identifiers, json_string(result->identifiers[i].str));
+    for (uint32_t i = 0; i < result->metadata.identifiers_len; i++) {
+        json_array_append(json_identifiers, json_string(result->metadata.identifiers[i]));
     }
     return json_identifiers;
 }
@@ -144,8 +145,9 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     json_object_set(obj, "detected_titles", json_integer(result.detected_titles));
     json_object_set(obj, "detected_abstracts", json_integer(result.detected_abstracts));
-    json_object_set(obj, "detected_titles_through_abstract", json_integer(result.detected_titles_through_abstract));
-    json_object_set(obj, "detected_titles_through_hash", json_integer(result.detected_titles_through_hash));
+    json_object_set(obj, "detected_metadata_through_title", json_integer(result.detected_metadata_through_title));
+    json_object_set(obj, "detected_metadata_through_abstract", json_integer(result.detected_metadata_through_abstract));
+    json_object_set(obj, "detected_metadata_through_hash", json_integer(result.detected_metadata_through_hash));
 
 
     char *str = json_dumps(obj, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
@@ -246,28 +248,16 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
     return OCS_PROCESSED;
 }
 
-int get_time(uint8_t *buf) {
-    time_t t;
-    struct tm *tnfo;
-
-    time(&t);
-    tnfo = localtime(&t);
-
-    strftime(buf, 26, "%Y-%m-%d %H:%M:%S", tnfo);
-}
-
 int save() {
-    uint8_t tbuf[26];
     pthread_rwlock_wrlock(&saver_rwlock);
     pthread_rwlock_rdlock(&data_rwlock);
-    get_time(tbuf);
-    printf("[%s] saving\n", tbuf);
+    log_info("saving");
     db_fields_save();
-    db_fhth_save();
-    db_ahth_save();
+    db_thmh_save();
+    db_fhmh_save();
+    db_ahmh_save();
     ht_save();
-    get_time(tbuf);
-    printf("[%s] saved\n", tbuf);
+    log_info("saved");
     pthread_rwlock_unlock(&data_rwlock);
     pthread_rwlock_unlock(&saver_rwlock);
 }
@@ -276,8 +266,6 @@ void *saver_thread(void *arg) {
     uint64_t saver_last_total = 0;
     uint64_t indicator_last_total = 0;
     time_t indicator_t = 0;
-
-    uint8_t tbuf[26];
 
     while (1) {
         usleep(50000);
@@ -292,11 +280,9 @@ void *saver_thread(void *arg) {
 
         if (current_total_indexed > indicator_last_total) {
             if (indicator_t + 30 <= t) {
-                get_time(tbuf);
-                printf("[%s] indexed total=%u, per_second=%u\n",
-                       tbuf,
-                       current_total_indexed,
-                       (current_total_indexed - indicator_last_total) / (t - indicator_t));
+                log_info("indexed total=%u, per_second=%u",
+                         current_total_indexed,
+                         (current_total_indexed - indicator_last_total) / (t - indicator_t));
                 indicator_last_total = current_total_indexed;
                 indicator_t = t;
             }
@@ -320,7 +306,7 @@ void *saver_thread(void *arg) {
 }
 
 void signal_handler(int signum) {
-    fprintf(stderr, "\nsignal received (%d), shutting down..\n", signum);
+    log_info("signal received (%d), shutting down..", signum);
 
     pthread_rwlock_wrlock(&data_rwlock);
 
@@ -328,32 +314,27 @@ void signal_handler(int signum) {
         onion_listen_stop(on);
     }
 
-    uint8_t tbuf[26];
-
     if (indexing_mode) {
-        get_time(tbuf);
-        printf("[%s] finalizing indexing mode\n", tbuf);
+        log_info("finalizing indexing mode");
         ht_save();
         db_indexing_mode_finish();
-        get_time(tbuf);
-        printf("[%s] finished\n", tbuf);
+        log_info("finished");
     } else {
-        get_time(tbuf);
-        printf("[%s] saving\n", tbuf);
+        log_info("saving");
         ht_save();
         db_fields_save();
-        db_fhth_save();
-        db_ahth_save();
-        get_time(tbuf);
-        printf("[%s] saved\n", tbuf);
+        db_thmh_save();
+        db_fhmh_save();
+        db_ahmh_save();
+        log_info("saved");
     }
 
     if (!db_close()) {
-        fprintf(stderr, "db close failed\n");
+        log_error("db close failed");
 //        return;
     }
 
-    fprintf(stderr, "exiting\n");
+    log_info("exiting");
 
     // Force flush because otherwise Docker doesn't output logs
     fflush(stdout);
@@ -401,7 +382,7 @@ int main(int argc, char **argv) {
 
     DIR *dir = opendir(opt_db_directory);
     if (!dir) {
-        fprintf(stderr, "database directory is invalid\n");
+        log_error("database directory is invalid");
         return EXIT_FAILURE;
     }
 
@@ -419,12 +400,12 @@ int main(int argc, char **argv) {
 
     if (indexing_mode) {
         if (!dedup_init()) {
-            fprintf(stderr, "failed to initialize deduplicator\n");
+            log_error("failed to initialize deduplicator");
             return EXIT_FAILURE;
         }
-        printf("starting in indexing mode\n");
+        log_info("starting in indexing mode");
     } else {
-        printf("starting in normal mode\n");
+        log_info("starting in normal mode");
     }
 
     setenv("ONION_LOG", "noinfo", 1);
@@ -432,30 +413,30 @@ int main(int argc, char **argv) {
     pthread_rwlock_init(&saver_rwlock, 0);
 
     if (!text_init()) {
-        fprintf(stderr, "failed to initialize text processor\n");
+        log_error("failed to initialize text processor");
         return EXIT_FAILURE;
     }
 
     if (indexing_mode) {
         if (!db_indexing_mode_init(opt_db_directory)) {
-            fprintf(stderr, "failed to initialize db indexing mode\n");
+            log_error("failed to initialize db indexing mode");
             return EXIT_FAILURE;
         }
     } else {
         if (!db_normal_mode_init(opt_db_directory)) {
-            fprintf(stderr, "failed to initialize db normal mode\n");
+            log_error("failed to initialize db normal mode");
             return EXIT_FAILURE;
         }
     }
 
     if (!ht_init()) {
-        fprintf(stderr, "failed to initialize hashtable\n");
+        log_error("failed to initialize hashtable");
         return EXIT_FAILURE;
     }
 
     stats_t stats = ht_stats();
-    printf("used_rows=%u\ntotal_ah_slots=%u\ntotal_th_slots=%u\nmax_ah_slots=%u\nmax_th_slots=%u\n",
-           stats.used_rows, stats.total_ah_slots, stats.total_th_slots, stats.max_ah_slots, stats.max_th_slots);
+    log_info("\nused_rows=%u\ntotal_ah_slots=%u\ntotal_th_slots=%u\nmax_ah_slots=%u\nmax_th_slots=%u\n",
+             stats.used_rows, stats.total_ah_slots, stats.total_th_slots, stats.max_ah_slots, stats.max_th_slots);
 
     pthread_t tid;
     pthread_create(&tid, NULL, saver_thread, 0);
@@ -480,7 +461,7 @@ int main(int argc, char **argv) {
     onion_url_add(urls, "stats", url_stats);
     onion_url_add_handler(urls, "panel", onion_handler_export_local_new("static/panel.html"));
 
-    printf("listening on port %s\n", opt_port);
+    log_info("listening on port %s", opt_port);
 
     onion_listen(on);
 

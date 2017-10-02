@@ -31,11 +31,12 @@
 #include "ht.h"
 #include "db.h"
 #include "text.h"
+#include "log.h"
 
 row_t rows[HASHTABLE_SIZE] = {0};
 
 uint32_t ht_init() {
-    printf("loading hashtable..\n");
+    log_info("loading hashtable");
     if (!db_ht_load(rows)) {
         return 0;
     }
@@ -77,7 +78,7 @@ slot_t *ht_get_slot(uint8_t type, uint64_t hash) {
             }
         }
     } else {
-        for (uint32_t i = row->ah_len; i < row->ah_len+row->th_len; i++) {
+        for (uint32_t i = row->ah_len; i < row->ah_len + row->th_len; i++) {
             if (row->slots[i].hash32 == hash32 && row->slots[i].hash8 == hash8) {
                 return &row->slots[i];
             }
@@ -94,18 +95,18 @@ uint32_t ht_add_slot(uint8_t type, uint64_t hash) {
 
     if ((type == 1 && row->ah_len == ROW_SLOTS_MAX) ||
         (type == 2 && row->th_len == ROW_SLOTS_MAX)) {
-        fprintf(stderr, "reached ROW_SLOTS_MAX limit for type %d\n", type);
+        log_error("reached ROW_SLOTS_MAX limit for type %d", type);
         return 0;
     }
 
     if (row->slots) {
         if (!(row->slots = realloc(row->slots, sizeof(slot_t) * (row->ah_len + row->th_len + 1)))) {
-            fprintf(stderr, "slot realloc failed\n");
+            log_error("realloc");
             return 0;
         };
     } else {
         if (!(row->slots = malloc(sizeof(slot_t)))) {
-            fprintf(stderr, "slot malloc failed\n");
+            log_error("malloc");
             return 0;
         }
     }

@@ -23,23 +23,25 @@ int db_close();
 
 int db_fields_save();
 
-int db_fhth_save();
+int db_thmh_save();
 
-int db_ahth_save();
+int db_fhmh_save();
+
+int db_ahmh_save();
 
 int db_fields_insert(uint64_t hash, uint8_t *data, uint32_t data_len);
 
-int db_fhth_insert(uint64_t fh, uint64_t th);
+int db_thmh_insert(uint64_t fh, uint64_t th);
 
-int db_ahth_insert(uint64_t ah, uint64_t th);
+int db_fhmh_insert(uint64_t fh, uint64_t th);
 
-sqlite3_stmt *db_fhth_get_stmt(uint64_t fh);
+int db_ahmh_insert(uint64_t ah, uint64_t th);
 
-uint64_t db_fhth_get_next_th(sqlite3_stmt *stmt);
+sqlite3_stmt *db_thmhs(uint64_t th, uint64_t *mhs, uint32_t *mhs_len);
 
-sqlite3_stmt *db_ahth_get_stmt(uint64_t ah);
+sqlite3_stmt *db_fhmhs(uint64_t fh, uint64_t *mhs, uint32_t *mhs_len);
 
-uint64_t db_ahth_get_next_th(sqlite3_stmt *stmt);
+sqlite3_stmt *db_ahmhs(uint64_t ah, uint64_t *mhs, uint32_t *mhs_len);
 
 sqlite3_stmt *db_get_fields_stmt(uint64_t hash);
 
