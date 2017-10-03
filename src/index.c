@@ -62,7 +62,6 @@ uint32_t insert_title(uint64_t metadata_hash, uint8_t *title) {
     uint64_t title_hash = text_hash64(processed_title, processed_title_len);
     //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
 
-
     uint32_t title_len = strlen(title);
 
     if (title_len >= MAX_TITLE_LEN) return 0;

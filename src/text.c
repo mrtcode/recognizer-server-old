@@ -83,7 +83,7 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
 
             if (res > 0) {
                 if (status != U_ZERO_ERROR) {
-                    log_error("unorm2_getDecomposition error: %s", u_errorName(status));
+                    //log_error("unorm2_getDecomposition error: %s", u_errorName(status));
                     return 0;
                 }
 
@@ -92,7 +92,7 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
 
                 u_strToUTF8(decomposed_str, 16, &decomposed_str_len, uc, -1, &status);
                 if (status != U_ZERO_ERROR) {
-                    log_error("u_strToUTF8 error: %s", u_errorName(status));
+                    //log_error("u_strToUTF8 error: %s", u_errorName(status));
                     return 0;
                 }
 
@@ -178,7 +178,7 @@ uint32_t text_process_field(uint8_t *text, uint8_t *output_text,
 
             if (res > 0) {
                 if (status != U_ZERO_ERROR) {
-                    log_error("unorm2_getDecomposition error: %s", u_errorName(status));
+                    //log_error("unorm2_getDecomposition error: %s", u_errorName(status));
                     return 0;
                 }
 
@@ -187,7 +187,7 @@ uint32_t text_process_field(uint8_t *text, uint8_t *output_text,
 
                 u_strToUTF8(decomposed_str, 16, &decomposed_str_len, uc, -1, &status);
                 if (status != U_ZERO_ERROR) {
-                    log_error("u_strToUTF8 error: %s", u_errorName(status));
+                    //log_error("u_strToUTF8 error: %s", u_errorName(status));
                     return 0;
                 }
 
@@ -454,7 +454,7 @@ uint32_t text_hashable_author(uint8_t *text, uint32_t text_len,
             break;
         }
 
-//        if (i >= text_len) break;
+        if (i >= text_len) break;
 
         si = i;
         U8_NEXT(text, i, -1, ci);
@@ -464,7 +464,7 @@ uint32_t text_hashable_author(uint8_t *text, uint32_t text_len,
 
             if (res > 0) {
                 if (status != U_ZERO_ERROR) {
-                    log_error("unorm2_getDecomposition error: %s", u_errorName(status));
+                    //log_error("unorm2_getDecomposition error: %s", u_errorName(status));
                     return 0;
                 }
 
@@ -473,7 +473,7 @@ uint32_t text_hashable_author(uint8_t *text, uint32_t text_len,
 
                 u_strToUTF8(decomposed_str, 16, &decomposed_str_len, uc, -1, &status);
                 if (status != U_ZERO_ERROR) {
-                    log_error("u_strToUTF8 error: %s", u_errorName(status));
+                    //log_error("u_strToUTF8 error: %s", u_errorName(status));
                     return 0;
                 }
 
@@ -522,12 +522,13 @@ uint32_t text_hashable_author(uint8_t *text, uint32_t text_len,
 }
 
 uint64_t get_metadata_hash(uint8_t *title, uint8_t *authors) {
+    if(!title || !authors) return 0;
     uint8_t buf[2048];
-    uint32_t buf_len = 1023 + 1;
+    uint32_t buf_len = 1024;
     if(!text_process(title, buf, &buf_len, 0, 0, 0, 0)) return 0;
 
-    uint32_t buf1_len = 255 + 1;
-    if(!text_hashable_author(authors, 0, buf + buf_len, &buf1_len)) return 0;
+    uint32_t buf1_len = 256;
+    if(!text_hashable_author(authors, strlen(authors), buf + buf_len, &buf1_len)) return 0;
 
     uint64_t metadata_hash = text_hash64(buf, buf_len + buf1_len);
 
