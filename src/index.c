@@ -55,7 +55,7 @@ uint32_t insert_title(uint64_t metadata_hash, uint8_t *title) {
     uint8_t processed_title[MAX_TITLE_LEN + 1];
     uint32_t processed_title_len = MAX_TITLE_LEN + 1;
 
-    text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0);
+    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0)) return 0;
 
     if (processed_title_len < 5) return 0;
 
@@ -212,6 +212,8 @@ uint32_t index_metadata(metadata_t *metadata) {
 
     uint64_t metadata_hash = get_metadata_hash(metadata->title, metadata->authors);
     //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
+
+    if(!metadata_hash) return 0;
 
     insert_title(metadata_hash, metadata->title);
     insert_authors(metadata_hash, metadata->authors);

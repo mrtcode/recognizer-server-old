@@ -524,10 +524,10 @@ uint32_t text_hashable_author(uint8_t *text, uint32_t text_len,
 uint64_t get_metadata_hash(uint8_t *title, uint8_t *authors) {
     uint8_t buf[2048];
     uint32_t buf_len = 1023 + 1;
-    text_process(title, buf, &buf_len, 0, 0, 0, 0);
+    if(!text_process(title, buf, &buf_len, 0, 0, 0, 0)) return 0;
 
     uint32_t buf1_len = 255 + 1;
-    text_hashable_author(authors, 0, buf + buf_len, &buf1_len);
+    if(!text_hashable_author(authors, 0, buf + buf_len, &buf1_len)) return 0;
 
     uint64_t metadata_hash = text_hash64(buf, buf_len + buf1_len);
 
