@@ -4,6 +4,20 @@
 #define MAX_LOOKUP_TEXT_LEN 10000
 #define MAX_IDENTIFIERS 20
 
+typedef struct title_metrics {
+    uint32_t len;
+    uint32_t offset;
+    uint32_t distance;
+    uint32_t inner_nls;
+    uint32_t outer_nls;
+    uint32_t in_quotes;
+} title_metrics_t;
+
+typedef struct authors_metrics {
+    uint32_t offset;
+    uint32_t len;
+} authors_metrics_t;
+
 typedef struct res_metadata {
     uint64_t metadata_hash;
     uint8_t title[MAX_TITLE_LEN + 1];

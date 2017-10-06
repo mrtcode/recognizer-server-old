@@ -34,38 +34,87 @@
 #include "index.h"
 #include "recognize.h"
 #include "log.h"
+#include "fuzzysearch.h"
 
 #define MAX_MH 10
 
 // Only a very basic implementation
-int match_title(uint8_t *processed_text, uint32_t processed_text_len,
-                uint8_t *data, uint32_t data_len) {
+//int match_title(uint8_t *processed_text, uint32_t processed_text_len,
+//                uint8_t *data, uint32_t data_len) {
+//    uint8_t *p = data + 1;
+//    uint8_t *s;
+//
+//    uint8_t *b;
+//
+//    uint32_t tokens_total = 0;
+//    uint32_t tokens_found = 0;
+//
+//    while (p - data < data_len - 1) {
+//        while (p - data < data_len - 1 && (*p == ' ' || *p == '\t' || *p == '\n')) p++;
+//        if (p - data >= data_len - 1) break;
+//        s = p;
+//        while (p - data <= data_len - 1 && *p != ' ' && *p != '\t' && *p != '\n') p++;
+//
+//        tokens_total++;
+//
+//        uint8_t token[256];
+//        uint32_t token_len = 256;
+//        text_process_fieldn(s, p - s, token, &token_len);
+//
+//        uint8_t *v = strstr(processed_text, token);
+//
+//        if (v) tokens_found++;
+//    }
+//
+//    if (tokens_total && tokens_found * 100 / tokens_total >= 70) return 1;
+//    return 0;
+//}
+
+int match_title(uint32_t *utext, uint32_t utext_len,
+                uint8_t *data, uint32_t data_len,
+                title_metrics_t *tm) {
     uint8_t *p = data + 1;
-    uint8_t *s;
 
-    uint8_t *b;
+    uint32_t len = data_len - 1;
 
-    uint32_t tokens_total = 0;
-    uint32_t tokens_found = 0;
+    if (utext_len > 4096) utext_len = 4096;
 
-    while (p - data < data_len - 1) {
-        while (p - data < data_len - 1 && (*p == ' ' || *p == '\t' || *p == '\n')) p++;
-        if (p - data >= data_len - 1) break;
-        s = p;
-        while (p - data <= data_len - 1 && *p != ' ' && *p != '\t' && *p != '\n') p++;
+    uint32_t utitle[MAX_LOOKUP_TEXT_LEN];
+    uint32_t utitle_len;
 
-        tokens_total++;
+    text_process2(data + 1, utitle, &utitle_len, data_len - 1);
 
-        uint8_t token[256];
-        uint32_t token_len = 256;
-        text_process_fieldn(s, p - s, token, &token_len);
+    int ret;
+    uint32_t offset;
+    uint32_t distance;
 
-        uint8_t *v = strstr(processed_text, token);
+    uint32_t max_distance;
 
-        if (v) tokens_found++;
+    if (len <= 30) {
+        max_distance = 0;
+    } else if (len <= 60) {
+        max_distance = 5;
+    } else {
+        max_distance = 10;
     }
 
-    if (tokens_total && tokens_found * 100 / tokens_total >= 70) return 1;
+    ret = fuzzysearch(utitle, utitle_len, utext, utext_len, &offset, &distance, max_distance);
+
+    if (!ret) return 0;
+
+    tm->len = len;
+    tm->offset = offset;
+    tm->distance = distance;
+
+    return 1;
+}
+
+int compare_titles(title_metrics_t *a, title_metrics_t *b) {
+    uint32_t matched_characters_a = a->len - a->distance;
+    uint32_t matched_characters_b = b->len - b->distance;
+    if (matched_characters_a > matched_characters_b) {
+        return 1;
+    }
     return 0;
 }
 
@@ -142,8 +191,11 @@ int32_t get_year_offset(uint8_t *original_text, uint32_t original_text_len, uint
     return -1;
 }
 
-int get_data(result_t *result, uint8_t *text, uint64_t metadata_hash,
-             uint8_t *output_text, uint32_t output_text_len, uint32_t *map, uint32_t map_len) {
+int process_metadata(result_t *result, uint8_t *text, uint64_t metadata_hash,
+                     uint8_t *output_text, uint32_t output_text_len,
+                     uint32_t *map, uint32_t map_len,
+                     uint8_t *output_utext, uint32_t output_utext_len) {
+    int ret;
     sqlite3_stmt *stmt = db_get_fields_stmt(metadata_hash);
 
     uint8_t *data;
@@ -153,16 +205,22 @@ int get_data(result_t *result, uint8_t *text, uint64_t metadata_hash,
 
     metadata.metadata_hash = metadata_hash;
 
+    title_metrics_t best_tm;
+    memset(&best_tm, 0, sizeof(title_metrics_t));
+
     while (db_get_next_field(stmt, &data, &data_len)) {
         if (data[0] == 1) {
-            int ret = match_title(output_text, 0, data, data_len);
+            title_metrics_t tm;
+            ret = match_title(output_utext, output_utext_len, data, data_len, &tm);
 
-            if (ret && strlen(metadata.title) < data_len - 1) {
-                memcpy(metadata.title, data + 1, data_len - 1);
-                metadata.title[data_len - 1] = 0;
+            if (ret) {
+                if (compare_titles(&tm, &best_tm)) {
+                    memcpy(metadata.title, data + 1, data_len - 1);
+                    metadata.title[data_len - 1] = 0;
+                }
             }
         } else if (data[0] == 2) {
-            int ret = match_authors(output_text, data, data_len);
+            ret = match_authors(output_text, data, data_len);
 
             if (ret && strlen(metadata.authors) < data_len - 1) {
                 memcpy(metadata.authors, data + 1, data_len - 1);
@@ -171,7 +229,7 @@ int get_data(result_t *result, uint8_t *text, uint64_t metadata_hash,
         } else if (data[0] == 3) {
             uint8_t abstract[sizeof(metadata.abstract)];
             uint32_t abstract_len;
-            int ret = extract_abstract(output_text, output_text_len,
+            ret = extract_abstract(output_text, output_text_len,
                                        text, 0,
                                        map, map_len,
                                        data, data_len, abstract, &abstract_len);
@@ -214,6 +272,12 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
 
     text_process(text, output_text, &output_text_len, map, &map_len, lines, &lines_len);
 
+    uint32_t output_utext[MAX_LOOKUP_TEXT_LEN];
+    uint32_t output_utext_len;
+
+    text_process2(text, output_utext, &output_utext_len, MAX_LOOKUP_TEXT_LEN - 1);
+
+
     uint64_t title_hash = 0;
     if (file_hash_str && strlen(file_hash_str) == 32) {
         uint8_t buf[17];
@@ -228,7 +292,8 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
         if (mhs_len <= MAX_MH) {
             for (uint32_t i = 0; i < mhs_len; i++) {
                 result->detected_metadata_through_hash++;
-                get_data(result, text, mhs[i], output_text, output_text_len, map, map_len);
+                process_metadata(result, text, mhs[i], output_text, output_text_len, map, map_len, output_utext,
+                                 output_utext_len);
             }
         }
     }
@@ -246,7 +311,8 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
                 if (mhs_len <= MAX_MH) {
                     for (uint32_t j = 0; j < mhs_len; j++) {
                         result->detected_metadata_through_abstract++;
-                        get_data(result, text, mhs[j], output_text, output_text_len, map, map_len);
+                        process_metadata(result, text, mhs[j], output_text, output_text_len, map, map_len, output_utext,
+                                         output_utext_len);
                     }
                 }
             }
@@ -254,15 +320,16 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
     }
 
     uint32_t tried = 0;
-    for (uint32_t i = 0; i < lines_len && tried <= 1000; i++) {
+    for (uint32_t i = 0; i < lines_len && lines[i].start<=3000 && tried <= 1000; i++) {
         for (uint32_t j = i; j < i + 6 && j < lines_len; j++) {
 
             uint32_t title_start = lines[i].start;
             uint32_t title_end = lines[j].end;
             uint32_t title_len = title_end - title_start + 1;
 
-            // Title ngram must be at least 20 bytes len which results to about two normal length latin words or 5-7 chinese characters
-            if (title_len < 10 || title_len > 512) continue;
+            if (title_len <= 20 || title_len > 500) continue;
+
+            if(title_len<30 && title_start>500) continue;
 
             tried++;
             title_hash = text_hash64(output_text + title_start, title_end - title_start + 1);
@@ -278,7 +345,8 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
                 if (mhs_len <= MAX_MH) {
                     for (uint32_t k = 0; k < mhs_len; k++) {
                         result->detected_metadata_through_title++;
-                        get_data(result, text, mhs[k], output_text, output_text_len, map, map_len);
+                        process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len, output_utext,
+                                         output_utext_len);
                     }
                 }
             }

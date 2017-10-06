@@ -36,4 +36,6 @@ uint8_t *text_rh_find32(uint8_t *haystack, uint32_t haystack_len, uint32_t needl
 
 uint64_t get_metadata_hash(uint8_t *title, uint8_t *authors);
 
+int text_process2(uint8_t *text, uint32_t *utext, uint32_t *utext_len, uint32_t utext_max_len);
+
 #endif //RECOGNIZER_SERVER_TEXT_H

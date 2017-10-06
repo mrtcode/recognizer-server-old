@@ -522,15 +522,45 @@ uint32_t text_hashable_author(uint8_t *text, uint32_t text_len,
 }
 
 uint64_t get_metadata_hash(uint8_t *title, uint8_t *authors) {
-    if(!title || !authors) return 0;
+    if (!title || !authors) return 0;
     uint8_t buf[2048];
     uint32_t buf_len = 1024;
-    if(!text_process(title, buf, &buf_len, 0, 0, 0, 0)) return 0;
+    if (!text_process(title, buf, &buf_len, 0, 0, 0, 0)) return 0;
 
     uint32_t buf1_len = 256;
-    if(!text_hashable_author(authors, strlen(authors), buf + buf_len, &buf1_len)) return 0;
+    if (!text_hashable_author(authors, strlen(authors), buf + buf_len, &buf1_len)) return 0;
 
     uint64_t metadata_hash = text_hash64(buf, buf_len + buf1_len);
 
     return metadata_hash;
+}
+
+int text_process2(uint8_t *text, uint32_t *utext, uint32_t *utext_len, uint32_t utext_max_len) {
+    uint32_t i = 0;
+    UChar32 c;
+
+    *utext_len = 0;
+
+    uint8_t prev_white = 0;
+
+    while (*utext_len < utext_max_len) {
+        U8_NEXT(text, i, -1, c);
+
+        if (c <= 0) break;
+
+        if (c=='\n' || c=='\r' || c=='\f') {
+            // Ignore
+        } else if (u_isWhitespace(c)) {
+            if (!prev_white) {
+                utext[(*utext_len)++] = ' ';
+            }
+            prev_white = 1;
+        } else {
+            prev_white = 0;
+            c = u_tolower(c);
+            utext[(*utext_len)++] = c;
+        }
+    }
+
+    return 1;
 }
