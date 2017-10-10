@@ -232,7 +232,7 @@ int process_metadata(result_t *result, uint8_t *text, uint64_t metadata_hash,
             ret = extract_abstract(output_text, output_text_len,
                                        text, 0,
                                        map, map_len,
-                                       data+1, data_len, abstract, &abstract_len);
+                                       data, data_len, abstract, &abstract_len);
             if (ret && strlen(metadata.abstract) < strlen(abstract)) {
                 strcpy(metadata.abstract, abstract);
             }

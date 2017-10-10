@@ -154,7 +154,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     json_decref(obj);
 
     onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
-    onion_response_printf(res, str);
+    onion_response_printf(res, "%s", str);
     free(str);
 
     return OCS_PROCESSED;
@@ -222,7 +222,7 @@ onion_connection_status url_index(void *_, onion_request *req, onion_response *r
         json_decref(obj);
 
         onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
-        onion_response_printf(res, str);
+        onion_response_printf(res, "%s", str);
         free(str);
     }
 
@@ -242,7 +242,7 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
     json_decref(obj);
 
     onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
-    onion_response_printf(res, str);
+    onion_response_printf(res, "%s", str);
     free(str);
 
     return OCS_PROCESSED;
