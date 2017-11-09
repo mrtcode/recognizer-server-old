@@ -18,10 +18,18 @@ typedef struct metadata {
     uint8_t *hash;
 } metadata_t;
 
+typedef struct doi_metadata {
+    uint8_t *title;
+    uint8_t *authors;
+    uint8_t *doi;
+} doi_metadata_t;
+
 time_t index_updated_t();
 
 uint64_t index_total_indexed();
 
 uint32_t index_metadata(metadata_t *metadata);
+
+uint32_t index_metadata2(uint8_t *title, uint8_t *authors, uint8_t *doi);
 
 #endif //RECOGNIZER_SERVER_INDEX_H

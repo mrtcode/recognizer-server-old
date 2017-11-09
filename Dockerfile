@@ -65,5 +65,3 @@ RUN cd /data/ \
 
 
 WORKDIR /data
-
-ENTRYPOINT ["/data/recognizer-server", "-d", "/data/db", "-p", "80"]

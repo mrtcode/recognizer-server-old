@@ -77,7 +77,7 @@ int match_title(uint32_t *utext, uint32_t utext_len,
 
     uint32_t len = data_len - 1;
 
-    if (utext_len > 4096) utext_len = 4096;
+    //if (utext_len > 4096) utext_len = 4096;
 
     uint32_t utitle[MAX_LOOKUP_TEXT_LEN];
     uint32_t utitle_len;
@@ -196,6 +196,7 @@ int process_metadata(result_t *result, uint8_t *text, uint64_t metadata_hash,
                      uint32_t *map, uint32_t map_len,
                      uint8_t *output_utext, uint32_t output_utext_len) {
     int ret;
+
     sqlite3_stmt *stmt = db_get_fields_stmt(metadata_hash);
 
     uint8_t *data;
@@ -207,6 +208,43 @@ int process_metadata(result_t *result, uint8_t *text, uint64_t metadata_hash,
 
     title_metrics_t best_tm;
     memset(&best_tm, 0, sizeof(title_metrics_t));
+
+    sqlite3_stmt *stmt2 = db_get_doidata_stmt(metadata_hash);
+    while (db_get_next_doidata(stmt2, &data, &data_len)) {
+        uint8_t *p = data;
+        uint16_t title_len = *((uint16_t *) p);
+        p += 2;
+        uint8_t *title = p;
+        p += title_len;
+        p++;
+        uint16_t authors_len = *((uint16_t *) p);
+        p += 2;
+        uint8_t *authors = p;
+        p += authors_len;
+        p++;
+        uint16_t doi_len = *((uint16_t *) p);
+        p += 2;
+        uint8_t *doi = p;
+
+//        printf("%d %d %d\n", title_len, authors_len, doi_len);
+//        printf("%s %s %s\n", title, authors, doi);
+
+        title_metrics_t tm;
+
+        ret = match_title(output_utext, output_utext_len, title-1, title_len +1, &tm);
+
+        if (!ret) continue;
+
+        ret = match_authors(output_text, authors-1, authors_len+1);
+
+        if (!ret) continue;
+
+        memcpy(metadata.identifiers[metadata.identifiers_len], "doi:", 4);
+        memcpy(metadata.identifiers[metadata.identifiers_len++]+4, doi, doi_len);
+
+        result->metadata = metadata;
+        return 0;
+    }
 
     while (db_get_next_field(stmt, &data, &data_len)) {
         if (data[0] == 1) {
@@ -261,7 +299,7 @@ int process_metadata(result_t *result, uint8_t *text, uint64_t metadata_hash,
 uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
     memset(result, 0, sizeof(result_t));
 
-    char output_text[MAX_LOOKUP_TEXT_LEN];
+    uint8_t output_text[MAX_LOOKUP_TEXT_LEN];
     uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
 
     uint32_t map[MAX_LOOKUP_TEXT_LEN];
@@ -270,7 +308,10 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
     line_t lines[MAX_LOOKUP_TEXT_LEN];
     uint32_t lines_len = MAX_LOOKUP_TEXT_LEN;
 
-    text_process(text, output_text, &output_text_len, map, &map_len, lines, &lines_len);
+    page_t pages[MAX_LOOKUP_TEXT_LEN];
+    uint32_t pages_len = MAX_LOOKUP_TEXT_LEN;
+
+    text_process(text, output_text, &output_text_len, map, &map_len, lines, &lines_len, pages, &pages_len);
 
     uint32_t output_utext[MAX_LOOKUP_TEXT_LEN];
     uint32_t output_utext_len;
@@ -352,6 +393,57 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
             }
         }
     }
+
+    for(uint32_t i=0;i<200;i++) {
+        for(uint32_t j=40;j<140;j++) {
+            title_hash = text_hash64(output_text + i, j);
+
+            if (ht_get_slot(2, title_hash)) {
+                result->detected_titles++;
+
+                uint64_t mhs[100];
+                uint32_t mhs_len = 100;
+                db_thmhs(title_hash, mhs, &mhs_len);
+
+                if (mhs_len <= MAX_MH) {
+                    for (uint32_t k = 0; k < mhs_len; k++) {
+                        result->detected_metadata_through_title++;
+                        process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len, output_utext,
+                                         output_utext_len);
+                    }
+                }
+            }
+        }
+    }
+
+
+
+    if(pages_len>=2) {
+        uint8_t *pb = output_text+pages[1].start;
+        for (uint32_t i = 0; i < 200; i++) {
+            for (uint32_t j = 40; j < 140; j++) {
+                title_hash = text_hash64(pb + i, j);
+
+                if (ht_get_slot(2, title_hash)) {
+                    result->detected_titles++;
+
+                    uint64_t mhs[100];
+                    uint32_t mhs_len = 100;
+                    db_thmhs(title_hash, mhs, &mhs_len);
+
+                    if (mhs_len <= MAX_MH) {
+                        for (uint32_t k = 0; k < mhs_len; k++) {
+                            result->detected_metadata_through_title++;
+                            process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len,
+                                             output_utext,
+                                             output_utext_len);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     if (result->metadata.metadata_hash) return 1;
     return 0;

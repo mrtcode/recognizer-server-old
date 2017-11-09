@@ -229,6 +229,79 @@ onion_connection_status url_index(void *_, onion_request *req, onion_response *r
     return OCS_PROCESSED;;
 }
 
+
+onion_connection_status url_index2(void *_, onion_request *req, onion_response *res) {
+    if (onion_request_get_flags(req) & OR_POST) {
+        struct timeval st, et;
+
+        gettimeofday(&st, NULL);
+        const onion_block *dreq = onion_request_get_data(req);
+
+        if (!dreq) return OCS_PROCESSED;
+
+        const char *data = onion_block_data(dreq);
+
+        json_t *root;
+        json_error_t error;
+
+        root = json_loads(data, 0, &error);
+
+        if (!root) {
+            return OCS_PROCESSED;
+        }
+
+        uint32_t indexed = 0;
+        if (json_is_array(root)) {
+            uint32_t n = json_array_size(root);
+            for (uint32_t i = 0; i < n; i++) {
+                json_t *el = json_array_get(root, i);
+                if (json_is_object(el)) {
+                    json_t *json_title = json_object_get(el, "title");
+                    json_t *json_authors = json_object_get(el, "authors");
+                    json_t *json_doi = json_object_get(el, "doi");
+
+                    metadata_t metadata;
+                    memset(&metadata, 0, sizeof(metadata_t));
+
+                    if (json_is_string(json_title) &&
+                        json_is_string(json_authors) &&
+                        json_is_string(json_doi)) {
+
+
+                        uint8_t *title = json_string_value(json_title);
+                        uint8_t *authors = json_string_value(json_authors);
+                        uint8_t *doi = json_string_value(json_doi);
+
+                        if (index_metadata2(title, authors, doi)) {
+                            indexed++;
+                        }
+
+                    }
+                }
+            }
+        }
+
+        json_decref(root);
+
+        gettimeofday(&et, NULL);
+
+        uint32_t elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
+
+        json_t *obj = json_object();
+        json_object_set_new(obj, "time", json_integer(elapsed));
+        json_object_set_new(obj, "indexed", json_integer(indexed));
+
+        char *str = json_dumps(obj, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
+        json_decref(obj);
+
+        onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
+        onion_response_printf(res, "%s", str);
+        free(str);
+    }
+
+    return OCS_PROCESSED;;
+}
+
 onion_connection_status url_stats(void *_, onion_request *req, onion_response *res) {
     stats_t stats = ht_stats();
     json_t *obj = json_object();
@@ -323,6 +396,7 @@ void signal_handler(int signum) {
         log_info("saving");
         ht_save();
         db_fields_save();
+        db_doidata_save();
         db_thmh_save();
         db_fhmh_save();
         db_ahmh_save();
@@ -347,7 +421,7 @@ void print_usage() {
             "Missing parameters.\n" \
             "-d\tdata directory\n" \
             "-p\tport\n" \
-            "-i\tstart in indexing mode (TEMPORARY DISABLED)\n" \
+            "-i\tstart in indexing mode\n" \
             "Usage example:\n" \
             "recognizer-server -d /var/db -p 8080\n"
     );
@@ -366,9 +440,9 @@ int main(int argc, char **argv) {
             case 'p':
                 opt_port = optarg;
                 break;
-//            case 'i':
-//                indexing_mode = 1;
-//                break;
+            case 'i':
+                indexing_mode = 1;
+                break;
             default:
                 print_usage();
                 return EXIT_FAILURE;
@@ -380,23 +454,25 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    DIR *dir = opendir(opt_db_directory);
-    if (!dir) {
-        log_error("database directory is invalid");
-        return EXIT_FAILURE;
-    }
+//    DIR *dir = opendir(opt_db_directory);
+//    if (!dir) {
+//        log_error("database directory is invalid");
+//        return EXIT_FAILURE;
+//    }
+//
+//    indexing_mode = 1;
+//
+//    uint32_t n = 0;
+//    while (readdir(dir)) {
+//        n++;
+//        if (n == 3) {
+//            indexing_mode = 0;
+//            break;
+//        }
+//    }
+//    closedir(dir);
 
-    indexing_mode = 1;
-
-    uint32_t n = 0;
-    while (readdir(dir)) {
-        n++;
-        if (n == 3) {
-            indexing_mode = 0;
-            break;
-        }
-    }
-    closedir(dir);
+//    indexing_mode = 1;
 
     if (indexing_mode) {
         if (!dedup_init()) {
@@ -456,8 +532,9 @@ int main(int argc, char **argv) {
 
     onion_url *urls = onion_root_url(on);
 
-    onion_url_add(urls, "recognize", url_recognize);
+    if(!indexing_mode) onion_url_add(urls, "recognize", url_recognize);
     onion_url_add(urls, "index", url_index);
+    onion_url_add(urls, "index2", url_index2);
     onion_url_add(urls, "stats", url_stats);
     onion_url_add_handler(urls, "panel", onion_handler_export_local_new("static/panel.html"));
 

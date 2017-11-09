@@ -6,10 +6,15 @@ typedef struct line {
     uint32_t end;
 } line_t;
 
+typedef struct page {
+    uint32_t start;
+    uint32_t end;
+} page_t;
+
 uint32_t text_init();
 
 uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text_len,
-                      uint32_t *map, uint32_t *map_len, line_t *lines, uint32_t *lines_len);
+                      uint32_t *map, uint32_t *map_len, line_t *lines, uint32_t *lines_len, page_t *pages, uint32_t *pages_len);
 
 uint32_t text_process_field(uint8_t *text, uint8_t *output_text,
                             uint32_t *output_text_len, uint8_t multi);

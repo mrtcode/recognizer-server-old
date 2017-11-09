@@ -55,7 +55,7 @@ uint32_t insert_title(uint64_t metadata_hash, uint8_t *title) {
     uint8_t processed_title[MAX_TITLE_LEN + 1];
     uint32_t processed_title_len = MAX_TITLE_LEN + 1;
 
-    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0)) return 0;
+    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0, 0, 0)) return 0;
 
     if (processed_title_len < 5) return 0;
 
@@ -220,6 +220,74 @@ uint32_t index_metadata(metadata_t *metadata) {
     insert_year(metadata_hash, metadata->year);
     insert_identifiers(metadata_hash, metadata->identifiers);
     insert_hash(metadata_hash, metadata->hash);
+
+    total_indexed++;
+    updated_t = time(0);
+    return 1;
+}
+
+uint32_t insert_doidata(uint64_t metadata_hash, uint8_t *title, uint8_t *authors, uint8_t *doi) {
+    if (!title) return 0;
+
+    uint8_t processed_title[MAX_TITLE_LEN + 1];
+    uint32_t processed_title_len = MAX_TITLE_LEN + 1;
+
+    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0, 0, 0)) return 0;
+
+    if (processed_title_len < 5) return 0;
+
+    uint64_t title_hash = text_hash64(processed_title, processed_title_len);
+
+
+    uint32_t title_len = strlen(title);
+    uint32_t authors_len = strlen(authors);
+    uint32_t doi_len = strlen(doi);
+
+    uint32_t data_len = 4 + title_len + 1 + 4 + authors_len + 1 + 4 + doi_len + 1;
+
+    uint8_t *data = malloc(data_len);
+
+    uint8_t *p = data;
+
+    *((uint16_t*)p) = title_len;
+    p+=2;
+    memcpy(p, title, title_len);
+    p+=title_len;
+    *p++=0;
+
+    *((uint16_t*)p) = authors_len;
+    p+=2;
+    memcpy(p, authors, authors_len);
+    p+=authors_len;
+    *p++=0;
+
+    *((uint16_t*)p) = doi_len;
+    p+=2;
+    memcpy(p, doi, doi_len);
+    p+=doi_len;
+    *p=0;
+
+    pthread_rwlock_wrlock(&data_rwlock);
+
+    if (!ht_get_slot(2, title_hash)) {
+        ht_add_slot(2, title_hash);
+    }
+
+    db_thmh_insert(title_hash, metadata_hash);
+    db_doidata_insert(metadata_hash, data, data_len);
+    pthread_rwlock_unlock(&data_rwlock);
+
+    free(data);
+}
+
+uint32_t index_metadata2(uint8_t *title, uint8_t *authors, uint8_t *doi) {
+
+    uint64_t metadata_hash = get_metadata_hash(title, authors);
+    //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
+
+    if(!metadata_hash) return 0;
+
+    insert_doidata(metadata_hash, title, authors, doi);
 
     total_indexed++;
     updated_t = time(0);

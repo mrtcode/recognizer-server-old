@@ -74,7 +74,16 @@
 
                 document.getElementById('recognize_result').innerHTML = html;
 
-                var crossrefUrl = 'http://api.crossref.org/works?query.title=' + encodeURIComponent(data.title);
+                var doi = null;
+
+                for(var i=0;i<data.identifiers.length;i++) {
+                    var identifier = data.identifiers[i];
+                    if(identifier.indexOf('10.')===0) {
+                        doi = identifier;
+                    }
+                }
+
+                var crossrefUrl = 'http://api.crossref.org/works/'+doi;
 
                 // Sometimes CrossRef fails to find author by it's last name, so we pass more than one
                 var lastNames = [];
@@ -99,15 +108,12 @@
 
                         html += '<p><b><a target="_blank" href="' + crossrefUrl + '">Crossref:</a></b></p>';
 
-                        data.message.items.forEach(function (item) {
-                            console.log(item.title[0]);
-                            html += '<p><b>' + item.title[0] + '</b> ' + authors_to_str(item.author) + ' <a target="_blank" href="' + item.URL + '">' + item.DOI + '</a></p>';
-                        });
+                        var item = data.message;
+                        console.log(item.title[0]);
+                        html += '<p><b>' + item.title[0] + '</b> ' + authors_to_str(item.author) + ' <a target="_blank" href="' + item.URL + '">' + item.DOI + '</a></p>';
 
                         document.getElementById('recognize_crossref_result').innerHTML = html;
-
                     })
-
             })
     });
 

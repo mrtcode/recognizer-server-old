@@ -37,12 +37,18 @@ typedef struct row {
 } row_t;
 
 row_t *fields_rows = 0;
+row_t *doidata_rows = 0;
 row_t *thmh_rows = 0;
 row_t *fhmh_rows = 0;
 row_t *ahmh_rows = 0;
 
 int dedup_init() {
     if (!(fields_rows = calloc(ROWS, sizeof(row_t)))) {
+        log_error("fields_rows calloc error");
+        return DEDUP_ERROR;
+    }
+
+    if (!(doidata_rows = calloc(ROWS, sizeof(row_t)))) {
         log_error("fields_rows calloc error");
         return DEDUP_ERROR;
     }
@@ -107,6 +113,45 @@ uint8_t dedup_fields(uint64_t mh, uint64_t dh) {
     return DEDUP_SUCCESS;
 }
 
+// 24 + 40 + 40 (24 + 64 + 16)
+uint8_t dedup_doidata(uint64_t mh) {
+    const uint32_t slot_size = 8;
+    uint32_t hash24 = (uint32_t) (mh >> 40);
+    uint64_t hash64 = mh;
+    row_t *row = fields_rows + hash24;
+
+    if (row->slots) {
+        for (uint32_t i = 0; i < row->slots_len; i++) {
+            if (*((uint64_t *) (row->slots + slot_size * i)) == hash64) {
+                return DEDUP_DUPLICATED;
+            }
+        }
+    }
+
+    if ((row->slots_len == ROW_SLOTS_MAX)) {
+        log_error("reached ROW_SLOTS_MAX limit");
+        return DEDUP_ERROR;
+    }
+
+    if (row->slots) {
+        if (!(row->slots = realloc(row->slots, slot_size * (row->slots_len + 1)))) {
+            log_error("slot realloc failed");
+            return DEDUP_ERROR;
+        }
+    } else {
+        if (!(row->slots = malloc(slot_size))) {
+            log_error("slot malloc failed");
+            return DEDUP_ERROR;
+        }
+    }
+
+    *((uint64_t *) (row->slots + slot_size * row->slots_len)) = hash64;
+
+    row->slots_len++;
+
+    return DEDUP_SUCCESS;
+}
+
 // 24 + 40 + 64 (24 + 64 + 32 + 8)
 uint8_t dedup_hmh(uint8_t type, uint64_t h, uint64_t mh) {
     row_t *row;
@@ -148,7 +193,7 @@ uint8_t dedup_hmh(uint8_t type, uint64_t h, uint64_t mh) {
     }
 
     if ((row->slots_len == ROW_SLOTS_MAX)) {
-        log_error("reached ROW_SLOTS_MAX limit");
+        log_error("reached ROW_SLOTS_MAX limit for type %d", type);
         return DEDUP_ERROR;
     }
 

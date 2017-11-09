@@ -46,12 +46,14 @@ uint32_t text_init() {
 }
 
 uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text_len,
-                      uint32_t *map, uint32_t *map_len, line_t *lines, uint32_t *lines_len) {
+                      uint32_t *map, uint32_t *map_len, line_t *lines, uint32_t *lines_len,
+                      page_t *pages, uint32_t *pages_len) {
     UErrorCode status = U_ZERO_ERROR;
     int32_t max_output_text_len = *output_text_len - 1;
     *output_text_len = 0;
     if (map) *map_len = 0;
     if (lines) *lines_len = 0;
+    if (pages) *pages_len = 0;
     int32_t output_text_offset = 0;
 
     int32_t si, i = 0;
@@ -59,6 +61,7 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
 
     UBool error = 0;
     uint8_t prev_new = 1;
+    uint8_t prev_new_page = 1;
 
     do {
         if (output_text_offset >= max_output_text_len) {
@@ -76,6 +79,14 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
                     (*lines_len)++;
                 }
                 prev_new = 0;
+            }
+
+            if (pages) {
+                if (prev_new_page) {
+                    pages[*pages_len].start = output_text_offset;
+                    (*pages_len)++;
+                }
+                prev_new_page = 0;
             }
 
             UChar uc[16];
@@ -137,6 +148,13 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
                     lines[(*lines_len) - 1].end = output_text_offset - 1;
                 }
                 prev_new = 1;
+            }
+        } else if (ci == '\f') {
+            if (pages) {
+                if (!prev_new_page) {
+                    pages[(*pages_len) - 1].end = output_text_offset - 1;
+                }
+                prev_new_page = 1;
             }
         }
     } while (ci > 0);
@@ -525,7 +543,7 @@ uint64_t get_metadata_hash(uint8_t *title, uint8_t *authors) {
     if (!title || !authors) return 0;
     uint8_t buf[2048];
     uint32_t buf_len = 1024;
-    if (!text_process(title, buf, &buf_len, 0, 0, 0, 0)) return 0;
+    if (!text_process(title, buf, &buf_len, 0, 0, 0, 0, 0, 0)) return 0;
 
     uint32_t buf1_len = 256;
     if (!text_hashable_author(authors, strlen(authors), buf + buf_len, &buf1_len)) return 0;

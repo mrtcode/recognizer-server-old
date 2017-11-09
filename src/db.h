@@ -23,6 +23,8 @@ int db_close();
 
 int db_fields_save();
 
+int db_doidata_save();
+
 int db_thmh_save();
 
 int db_fhmh_save();
@@ -30,6 +32,8 @@ int db_fhmh_save();
 int db_ahmh_save();
 
 int db_fields_insert(uint64_t hash, uint8_t *data, uint32_t data_len);
+
+int db_doidata_insert(uint64_t mh, uint8_t *data, uint32_t data_len);
 
 int db_thmh_insert(uint64_t fh, uint64_t th);
 
@@ -46,6 +50,10 @@ sqlite3_stmt *db_ahmhs(uint64_t ah, uint64_t *mhs, uint32_t *mhs_len);
 sqlite3_stmt *db_get_fields_stmt(uint64_t hash);
 
 int db_get_next_field(sqlite3_stmt *stmt, uint8_t **data, uint32_t *data_len);
+
+sqlite3_stmt *db_get_doidata_stmt(uint64_t mh);
+
+int db_get_next_doidata(sqlite3_stmt *stmt, uint8_t **data, uint32_t *data_len);
 
 int db_ht_save(row_t *rows, uint32_t rows_len);
 
