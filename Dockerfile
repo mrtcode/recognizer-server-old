@@ -54,6 +54,7 @@ RUN apt-get update \
 COPY ./src /data/src
 COPY ./CMakeLists.txt /data/
 COPY ./static /data/static
+COPY ./blacklist.dat /data/
 
 RUN cd /data/ \
     && mkdir release \

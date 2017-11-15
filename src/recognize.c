@@ -35,6 +35,7 @@
 #include "recognize.h"
 #include "log.h"
 #include "fuzzysearch.h"
+#include "blacklist.h"
 
 #define MAX_MH 10
 
@@ -377,17 +378,35 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
             //printf("Lookup: %lu %.*s\n", title_hash, title_end-title_start+1, output_text+title_start);
 
             if (ht_get_slot(2, title_hash)) {
-                result->detected_titles++;
 
-                uint64_t mhs[100];
-                uint32_t mhs_len = 100;
-                db_thmhs(title_hash, mhs, &mhs_len);
+                uint8_t blacklisted=0;
+                for(uint32_t k=title_len;k>=15;k--) {
+                    for(uint32_t m=0;m<=title_len-k;m++) {
+                        uint64_t h = text_hash64(output_text + title_start + m, k);
 
-                if (mhs_len <= MAX_MH) {
-                    for (uint32_t k = 0; k < mhs_len; k++) {
-                        result->detected_metadata_through_title++;
-                        process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len, output_utext,
-                                         output_utext_len);
+                        if(blacklist_has(h)) {
+                            //printf("black list hash: %lu %.*s\n", h, k, output_text + title_start + m);
+                            blacklisted = 1;
+                            break;
+                        }
+                    }
+                    if(blacklisted) break;
+                }
+
+                if(!blacklisted) {
+                    result->detected_titles++;
+
+                    uint64_t mhs[100];
+                    uint32_t mhs_len = 100;
+                    db_thmhs(title_hash, mhs, &mhs_len);
+
+                    if (mhs_len <= MAX_MH) {
+                        for (uint32_t k = 0; k < mhs_len; k++) {
+                            result->detected_metadata_through_title++;
+                            process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len,
+                                             output_utext,
+                                             output_utext_len);
+                        }
                     }
                 }
             }
@@ -399,17 +418,34 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
             title_hash = text_hash64(output_text + i, j);
 
             if (ht_get_slot(2, title_hash)) {
-                result->detected_titles++;
 
-                uint64_t mhs[100];
-                uint32_t mhs_len = 100;
-                db_thmhs(title_hash, mhs, &mhs_len);
+                uint8_t blacklisted=0;
+                for(uint32_t k=j;k>=15;k--) {
+                    for(uint32_t m=0;m<=j-k;m++) {
+                        uint64_t h = text_hash64(output_text + i + m, k);
 
-                if (mhs_len <= MAX_MH) {
-                    for (uint32_t k = 0; k < mhs_len; k++) {
-                        result->detected_metadata_through_title++;
-                        process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len, output_utext,
-                                         output_utext_len);
+                        if(blacklist_has(h)) {
+                            blacklisted = 1;
+                            break;
+                        }
+                    }
+                    if(blacklisted) break;
+                }
+
+                if(!blacklisted) {
+                    result->detected_titles++;
+
+                    uint64_t mhs[100];
+                    uint32_t mhs_len = 100;
+                    db_thmhs(title_hash, mhs, &mhs_len);
+
+                    if (mhs_len <= MAX_MH) {
+                        for (uint32_t k = 0; k < mhs_len; k++) {
+                            result->detected_metadata_through_title++;
+                            process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len,
+                                             output_utext,
+                                             output_utext_len);
+                        }
                     }
                 }
             }
@@ -425,18 +461,33 @@ uint32_t recognize(uint8_t *file_hash_str, uint8_t *text, result_t *result) {
                 title_hash = text_hash64(pb + i, j);
 
                 if (ht_get_slot(2, title_hash)) {
-                    result->detected_titles++;
+                    uint8_t blacklisted=0;
+                    for(uint32_t k=j;k>=15;k--) {
+                        for(uint32_t m=0;m<=j-k;m++) {
+                            uint64_t h = text_hash64(output_text + i + m, k);
 
-                    uint64_t mhs[100];
-                    uint32_t mhs_len = 100;
-                    db_thmhs(title_hash, mhs, &mhs_len);
+                            if(blacklist_has(h)) {
+                                blacklisted = 1;
+                                break;
+                            }
+                        }
+                        if(blacklisted) break;
+                    }
 
-                    if (mhs_len <= MAX_MH) {
-                        for (uint32_t k = 0; k < mhs_len; k++) {
-                            result->detected_metadata_through_title++;
-                            process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len,
-                                             output_utext,
-                                             output_utext_len);
+                    if(!blacklisted) {
+                        result->detected_titles++;
+
+                        uint64_t mhs[100];
+                        uint32_t mhs_len = 100;
+                        db_thmhs(title_hash, mhs, &mhs_len);
+
+                        if (mhs_len <= MAX_MH) {
+                            for (uint32_t k = 0; k < mhs_len; k++) {
+                                result->detected_metadata_through_title++;
+                                process_metadata(result, text, mhs[k], output_text, output_text_len, map, map_len,
+                                                 output_utext,
+                                                 output_utext_len);
+                            }
                         }
                     }
                 }

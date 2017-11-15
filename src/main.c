@@ -40,6 +40,7 @@
 #include "rh.h"
 #include "dedup.h"
 #include "log.h"
+#include "blacklist.h"
 
 onion *on = NULL;
 pthread_rwlock_t data_rwlock;
@@ -451,6 +452,10 @@ int main(int argc, char **argv) {
 
     if (!opt_db_directory || !opt_port) {
         print_usage();
+        return EXIT_FAILURE;
+    }
+
+    if(!blacklist_init()) {
         return EXIT_FAILURE;
     }
 
