@@ -14,55 +14,19 @@ typedef struct iterator {
 
 int db_normal_mode_init(char *directory);
 
-int db_indexing_mode_init(char *directory);
+uint32_t db_dois_id_last();
 
-int db_indexing_mode_finish();
+uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi, uint32_t doi_max_len);
 
 int db_close();
 
-
-int db_fields_save();
-
-int db_doidata_save();
-
-int db_thmh_save();
-
-int db_fhmh_save();
-
-int db_ahmh_save();
-
-int db_fields_insert(uint64_t hash, uint8_t *data, uint32_t data_len);
-
-int db_doidata_insert(uint64_t mh, uint8_t *data, uint32_t data_len);
-
-int db_thmh_insert(uint64_t fh, uint64_t th);
-
-int db_fhmh_insert(uint64_t fh, uint64_t th);
-
-int db_ahmh_insert(uint64_t ah, uint64_t th);
-
-sqlite3_stmt *db_thmhs(uint64_t th, uint64_t *mhs, uint32_t *mhs_len);
-
-sqlite3_stmt *db_fhmhs(uint64_t fh, uint64_t *mhs, uint32_t *mhs_len);
-
-sqlite3_stmt *db_ahmhs(uint64_t ah, uint64_t *mhs, uint32_t *mhs_len);
-
-sqlite3_stmt *db_get_fields_stmt(uint64_t hash);
-
-int db_get_next_field(sqlite3_stmt *stmt, uint8_t **data, uint32_t *data_len);
-
-sqlite3_stmt *db_get_doidata_stmt(uint64_t mh);
-
-int db_get_next_doidata(sqlite3_stmt *stmt, uint8_t **data, uint32_t *data_len);
+int db_dois_insert(uint32_t doi_id, uint8_t *doi, uint32_t doi_len);
+int db_dois_save();
 
 int db_ht_save(row_t *rows, uint32_t rows_len);
 
 int db_ht_load(row_t *rows);
 
-uint32_t db_fields_in_transaction();
-
-uint32_t db_fhth_in_transaction();
-
-uint32_t db_ahth_in_transaction();
+uint32_t db_dois_in_transaction();
 
 #endif //RECOGNIZER_SERVER_DB_H
