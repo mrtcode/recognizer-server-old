@@ -55,7 +55,7 @@ uint32_t insert_title(uint64_t metadata_hash, uint8_t *title) {
     uint8_t processed_title[MAX_TITLE_LEN + 1];
     uint32_t processed_title_len = MAX_TITLE_LEN + 1;
 
-    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0, 0, 0)) return 0;
+    if(!text_process(title, processed_title, &processed_title_len, 0, 0)) return 0;
 
     if (processed_title_len < 5) return 0;
 
@@ -232,7 +232,7 @@ uint32_t insert_doidata(uint64_t metadata_hash, uint8_t *title, uint8_t *authors
     uint8_t processed_title[MAX_TITLE_LEN + 1];
     uint32_t processed_title_len = MAX_TITLE_LEN + 1;
 
-    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0, 0, 0)) return 0;
+    if(!text_process(title, processed_title, &processed_title_len, 0, 0)) return 0;
 
     if (processed_title_len < 5) return 0;
 

@@ -161,6 +161,80 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     return OCS_PROCESSED;
 }
 
+
+
+onion_connection_status url_recognize2(void *_, onion_request *req, onion_response *res) {
+    if (!(onion_request_get_flags(req) & OR_POST)) {
+        return OCS_PROCESSED;
+    }
+
+    const onion_block *dreq = onion_request_get_data(req);
+
+    if (!dreq) return OCS_PROCESSED;
+
+    const char *data = onion_block_data(dreq);
+
+    json_t *root;
+    json_error_t error;
+    root = json_loads(data, 0, &error);
+
+    if (!root || !json_is_object(root)) {
+        return OCS_PROCESSED;
+    }
+
+    json_t *json_hash = json_object_get(root, "hash");
+    json_t *json_body = json_object_get(root, "body");
+
+    if (!json_is_string(json_hash) && !json_is_object(json_body)) {
+        return OCS_PROCESSED;;
+    }
+
+    uint8_t *hash = json_string_value(json_hash);
+
+
+    struct timeval st, et;
+
+    result_t result = {0};
+    uint32_t rc;
+    pthread_rwlock_rdlock(&data_rwlock);
+
+    gettimeofday(&st, NULL);
+    rc = recognize2(hash, json_body, &result);
+    gettimeofday(&et, NULL);
+
+    pthread_rwlock_unlock(&data_rwlock);
+
+
+    uint32_t elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
+
+    json_t *obj = json_object();
+
+    json_object_set_new(obj, "time", json_integer(elapsed));
+    if (rc) {
+        json_object_set(obj, "title", json_string(result.metadata.title));
+        json_object_set(obj, "authors", authors_to_json(result.metadata.authors));
+        json_object_set(obj, "abstract", json_string(result.metadata.abstract));
+        json_object_set(obj, "year", json_integer(result.metadata.year));
+        json_object_set(obj, "identifiers", get_identifiers_json(&result));
+    }
+
+    json_object_set(obj, "detected_titles", json_integer(result.detected_titles));
+    json_object_set(obj, "detected_abstracts", json_integer(result.detected_abstracts));
+    json_object_set(obj, "detected_metadata_through_title", json_integer(result.detected_metadata_through_title));
+    json_object_set(obj, "detected_metadata_through_abstract", json_integer(result.detected_metadata_through_abstract));
+    json_object_set(obj, "detected_metadata_through_hash", json_integer(result.detected_metadata_through_hash));
+
+
+    char *str = json_dumps(obj, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
+    json_decref(obj);
+
+    onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
+    onion_response_printf(res, "%s", str);
+    free(str);
+
+    return OCS_PROCESSED;
+}
+
 onion_connection_status url_index(void *_, onion_request *req, onion_response *res) {
     if (onion_request_get_flags(req) & OR_POST) {
         struct timeval st, et;
@@ -538,6 +612,7 @@ int main(int argc, char **argv) {
     onion_url *urls = onion_root_url(on);
 
     if(!indexing_mode) onion_url_add(urls, "recognize", url_recognize);
+    if(!indexing_mode) onion_url_add(urls, "recognize2", url_recognize2);
     onion_url_add(urls, "index", url_index);
     onion_url_add(urls, "index2", url_index2);
     onion_url_add(urls, "stats", url_stats);

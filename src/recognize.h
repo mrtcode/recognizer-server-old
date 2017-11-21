@@ -39,5 +39,6 @@ typedef struct result {
 } result_t;
 
 uint32_t recognize(uint8_t *hash, uint8_t *text, result_t *result);
+uint32_t recognize2(uint8_t *hash, json_t *body, result_t *result);
 
 #endif //RECOGNIZER_SERVER_RECOGNIZE_H
