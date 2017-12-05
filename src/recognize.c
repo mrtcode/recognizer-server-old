@@ -1328,12 +1328,13 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
     get_authors(title_yMax, page, authors);
 
-    strcpy(result->authors, authors);
 
 
-    if (title_font_size > 1) {
+
+    if (title_font_size > 1 && strlen(authors)) {
         strcpy(result->title, title);
-        return 0;
+        strcpy(result->authors, authors);
+        return 1;
     }
 
 

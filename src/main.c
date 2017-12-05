@@ -148,13 +148,13 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     json_t *obj = json_object();
 
     json_object_set_new(obj, "time", json_integer(elapsed));
-    if (rc) {
+    //if (rc) {
         json_object_set(obj, "title", json_string(result.title));
         json_object_set(obj, "authors", authors_to_json(result.authors));
         if(*result.doi!=0) json_object_set(obj, "doi", json_string(result.doi));
         if(*result.isbn!=0) json_object_set(obj, "isbn", json_string(result.isbn));
         if(*result.arxiv!=0) json_object_set(obj, "arxiv", json_string(result.arxiv));
-    }
+    //}
 
     printf("title: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\n",
            result.title,
