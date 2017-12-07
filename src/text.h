@@ -56,4 +56,6 @@ int text_process2(uint8_t *text, uint32_t *utext, uint32_t *utext_len, uint32_t 
 
 text_info_t text_get_info(uint8_t *text);
 
+uint32_t get_alphabetic_percent(uint8_t *text);
+
 #endif //RECOGNIZER_SERVER_TEXT_H

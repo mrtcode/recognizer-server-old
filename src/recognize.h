@@ -10,6 +10,7 @@ typedef struct res_metadata {
     uint8_t doi[1024];
     uint8_t isbn[14];
     uint8_t arxiv[256];
+    uint8_t abstract[10000];
 } res_metadata_t;
 
 typedef struct pdf_metadata {

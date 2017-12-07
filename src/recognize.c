@@ -479,7 +479,7 @@ int init_fonts_info(fonts_info_t *fonts_info, doc_t *doc) {
         page_t *page = doc->pages + page_i;
 
         for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
-            flow_t *flow = page->flows + flow_i;;
+            flow_t *flow = page->flows + flow_i;
 
             for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
                 block_t *block = flow->blocks + block_i;
@@ -493,7 +493,6 @@ int init_fonts_info(fonts_info_t *fonts_info, doc_t *doc) {
                         increment_font(fonts_info, word->font_size, word->text_len);
                     }
                 }
-
             }
         }
     }
@@ -672,9 +671,8 @@ int get_authors2(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *
                 } else {
                     goto end;
                 }
-            } else if (uchar->c != ' ') {
-                goto end;
-            }
+            } else continue;
+
         } else {
 
             if (!strcmp(names[names_len], "AND") || !strcmp(names[names_len], "UND")) {
@@ -713,7 +711,8 @@ int get_authors2(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *
             memcpy(authors[*authors_len].names, names, 4 * 128);
             authors[*authors_len].names_len = names_len;
             (*authors_len)++;
-        } else return 0;
+        } else
+            return 0;
         n = 0;
         names_len = 0;
         cur_name_len = 0;
@@ -727,7 +726,8 @@ int get_authors2(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *
         memcpy(authors[*authors_len].names, names, 4 * 128);
         authors[*authors_len].names_len = names_len;
         (*authors_len)++;
-    } else return 0;
+    } else
+        return 0;
 
     return 1;
 }
@@ -772,12 +772,10 @@ double get_distance(double x1Min, double x1Max, double y1Min, double y1Max,
     return fabs(y);
 }
 
-
 int compare_int(const void *b, const void *a) {
     if (((grouped_blocks_t *) a)->max_font_size == ((grouped_blocks_t *) b)->max_font_size) return 0;
     return ((grouped_blocks_t *) a)->max_font_size < ((grouped_blocks_t *) b)->max_font_size ? -1 : 1;
 }
-
 
 int get_authors(double title_yMax, page_t *page, uint8_t *au) {
 
@@ -816,7 +814,11 @@ int get_authors(double title_yMax, page_t *page, uint8_t *au) {
                 line_to_uchars(line, ustr, &ustr_len);
                 int ret = get_authors2(ustr, ustr_len, authors, &authors_len);
 
-                if (started && authors_len == 0) return 0;
+                if (started && authors_len == 0) {
+                    free(ustr);
+                    free(authors);
+                    return 0;
+                }
 
 
                 for (uint32_t j = 0; j < authors_len; j++) {
@@ -850,11 +852,14 @@ int get_authors(double title_yMax, page_t *page, uint8_t *au) {
                     printf("%f %d %f %f %f %f\n", author->font_size, author->bold,
                            author->xMin, author->xMax, author->yMin, author->yMax);
                 }
-
             }
         }
     }
+    free(ustr);
+    free(authors);
 
+
+    return 1;
 }
 
 int find_author(uint8_t *text, uint32_t text_len, uint32_t author_hash, uint32_t author_len) {
@@ -1164,30 +1169,29 @@ int is_first_page_missing_fonts(doc_t *doc) {
 
     uint32_t missing = 0;
 
-    for(uint32_t i=0;i<fonts_len;i++) {
+    for (uint32_t i = 0; i < fonts_len; i++) {
         uint64_t font1 = fonts[i];
 
         uint8_t found = 0;
-        for(uint32_t j=0;j<fonts2_len;j++) {
+        for (uint32_t j = 0; j < fonts2_len; j++) {
             uint64_t font2 = fonts2[j];
 
-            if(font1==font2) {
-                found=1;
+            if (font1 == font2) {
+                found = 1;
                 break;
             }
         }
 
-        if(!found) {
+        if (!found) {
             missing++;
         }
 
     }
 
-    if(missing == fonts_len && fonts2_len>=2) return 1;
+    if (missing == fonts_len && fonts2_len >= 2) return 1;
 
     return 0;
 }
-
 
 uint8_t is_first_page_injected(doc_t *doc) {
     if (doc->pages_len >= 3) {
@@ -1195,6 +1199,263 @@ uint8_t is_first_page_injected(doc_t *doc) {
             return 1;
         }
     }
+    return 0;
+}
+
+uint32_t is_simple_abstract_name(uint8_t *text) {
+    static uint8_t names[10][32] = {
+            "abstract",
+            "summary"
+    };
+
+    for(uint32_t i=0;i<2;i++) {
+        uint8_t *c = names[i];
+        uint8_t *v = text;
+
+        uint8_t first = 1;
+
+        while(*c) {
+            if(first) {
+                if (*c-32 != *v) break;
+            } else {
+                if (*c != *v && *c-32 != *v ) break;
+            }
+            first=0;
+            c++;
+            v++;
+        }
+
+        if(!*c) {
+            printf("FOUND11: %s\n", names[i]);
+            return c-names[i];
+        }
+    }
+    return 0;
+}
+
+int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_size) {
+    uint8_t found_abstract = 0;
+
+    uint8_t start = 0;
+    uint32_t start_skip = 0;
+    uint8_t finish = 0;
+
+    uint32_t abstract_len = 0;
+
+    UBool error = 0;
+
+    for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
+        flow_t *flow = page->flows + flow_i;
+
+        for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
+            block_t *block = flow->blocks + block_i;
+
+            for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
+                line_t *line = block->lines + line_i;
+
+                if (!found_abstract) {
+                    uint32_t name_len = is_simple_abstract_name(line->words[0].text);
+                    if (name_len) {
+                        found_abstract = 1;
+                        start = 1;
+                        start_skip = name_len;
+                    }
+                }
+
+                if (start) {
+                    for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
+                        word_t *word = line->words + word_i;
+
+                        uint32_t s, i = 0;
+                        UChar32 c;
+
+                        do {
+                            s = i;
+                            U8_NEXT(word->text, i, -1, c);
+
+                            if (!c) break;
+
+                            if (start_skip) {
+                                start_skip--;
+                            } else {
+                                if (!finish && (u_isUAlphabetic(c) || u_isdigit(c))) {
+                                    finish = 1;
+                                }
+
+                                if (finish) {
+                                    U8_APPEND(abstract, abstract_len, abstract_size-1, c, error);
+                                    if (error) {
+                                        *abstract = 0;
+                                        return 0;
+                                    }
+                                }
+                            }
+                        } while (1);
+
+                        if (word->space_after) {
+                            if (start_skip) {
+                                start_skip--;
+                            } else {
+                                if (finish) {
+                                    if (word->space_after) {
+                                        abstract[abstract_len++] = ' ';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (finish) {
+                    if (abstract_len && abstract[abstract_len - 1] == '-') {
+                        abstract_len--;
+                    } else {
+                        abstract[abstract_len++] = ' ';
+                    }
+                }
+
+                if (finish) {
+                    printf("line: %f\n", line->xMax);
+                    if (
+                            line_i >= 2 &&
+                            fabs(block->lines[line_i-2].xMax-block->lines[line_i-1].xMax)<1.0 &&
+                            block->lines[line_i].xMax < block->lines[line_i - 1].xMax - 2) {
+                        printf("%s\n\n\n", abstract);
+                        abstract[abstract_len] = 0;
+                        return 1;
+                    }
+                }
+            }
+
+            if (finish) {
+                printf("%s\n\n\n", abstract);
+                abstract[abstract_len] = 0;
+                return 1;
+            }
+        }
+    }
+
+    *abstract = 0;
+    return 0;
+}
+
+
+uint32_t is_structured_abstract_name(uint8_t *text) {
+    static uint8_t names[10][32] = {
+            "background",
+            "methods",
+            "method",
+            "conclusions",
+            "conclusion",
+            "objectives",
+            "objective",
+            "results",
+            "result",
+    };
+    printf("tt: %s\n", names[0]);
+    printf("tt: %s\n", names[1]);
+
+    for(uint32_t i=0;i<9;i++) {
+        uint8_t *c = names[i];
+        uint8_t *v = text;
+
+        uint8_t first = 1;
+
+        while(*c) {
+            if(first) {
+                if (*c-32 != *v) break;
+            } else {
+                if (*c != *v && *c-32 != *v ) break;
+            }
+            first=0;
+            c++;
+            v++;
+        }
+
+        if(!*c) {
+            printf("FOUND11: %s\n", names[i]);
+            return c-names[i];
+        }
+    }
+    return 0;
+}
+
+int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstract_size) {
+    uint8_t start = 0;
+    uint32_t abstract_len=0;
+    uint8_t exit=0;
+    UBool error = 0;
+
+    uint32_t names_detected = 0;
+
+    for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
+        flow_t *flow = page->flows + flow_i;
+
+        for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
+            block_t *block = flow->blocks + block_i;
+
+            for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
+                line_t *line = block->lines + line_i;
+
+                uint32_t name_len = is_structured_abstract_name(line->words[0].text);
+                if (name_len) {
+                    names_detected++;
+                    start = 1;
+                    exit=0;
+                    if(abstract_len) abstract[abstract_len++]='\n';
+                    printf("\n\n");
+                }
+
+                if(start) {
+                    if (exit) {
+                        printf("%s\n\n\n", abstract);
+                        *abstract = 0;
+                        return 0;
+                    }
+                }
+
+                if(start) {
+                    for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
+                        word_t *word = line->words + word_i;
+
+                        uint32_t s, i = 0;
+                        UChar32 c;
+
+                        do {
+                            s = i;
+                            U8_NEXT(word->text, i, -1, c);
+
+                            if (!c) break;
+
+                            U8_APPEND(abstract, abstract_len, abstract_size - 1, c, error);
+                            if (error) {
+                                *abstract = 0;
+                                return 0;
+                            }
+                        } while (1);
+
+                        if(word->space_after) {
+                            abstract[abstract_len++]=' ';
+                        }
+
+                    }
+                }
+            }
+
+            if(start) {
+                if(names_detected>=2) {
+                    printf("%s\n\n\n", abstract);
+                    abstract[abstract_len] = 0;
+                    return 1;
+                } else {
+                    *abstract = 0;
+                    return 0;
+                }
+
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -1260,7 +1521,12 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
     page_t *page = &doc->pages[0];
     if ((is_first_page_missing_fonts(doc) || is_first_page_injected(doc))
-        && doc->pages_len>=2 && doc->pages[1].flows_len) page = &doc->pages[1];
+        && doc->pages_len >= 2 && doc->pages[1].flows_len)
+        page = &doc->pages[1];
+
+    if(!extract_abstract_structured(page, result->abstract, sizeof(result->abstract))) {
+        extract_abstract_simple(page, result->abstract, sizeof(result->abstract));
+    }
 
     grouped_blocks_t grouped_blocks[1000];
     uint32_t grouped_blocks_len = 0;
@@ -1285,6 +1551,7 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
         if (gb->max_font_size <= main_font->font_size && !gb->upper) continue;
 
+
         uint8_t text[1024] = {0};
         uint32_t text_len = 0;
         for (uint32_t k = 0; k < gb->blocks_len; k++) {
@@ -1297,7 +1564,8 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
             text[text_len++] = 0;
         }
 
-        if (text_len < 6 || text_len > 300) continue;
+
+        if (text_len < 25 || text_len > 300) continue;
 
         if (!*result->doi) {
             if (get_doi_by_title(text, output_text22, output_text_len22, result->doi, 500)) {
@@ -1305,16 +1573,23 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
             }
         }
 
-        if (text_len >= 20 && title_font_size < gb->max_font_size) {
-            strcpy(title, text);
+        if (get_alphabetic_percent(text) < 70) continue;
+
+        uint8_t authors[10000] = {0};
+        get_authors(gb->yMax, page, authors);
+        printf("au: %s\n", authors);
+
+        if (text_len >= 20 && title_font_size < gb->max_font_size && strlen(authors)) {
+            strcpy(result->title, text);
+            strcpy(result->authors, authors);
             title_font_size = gb->max_font_size;
-            title_yMax = gb->yMax;
         }
 
         printf("TXT: %s\n", text);
 
 
     }
+
 
     if (!*result->doi) {
         uint8_t jstor_doi[1024];
@@ -1324,18 +1599,16 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
         }
     }
 
-    uint8_t authors[10000] = {0};
-
-    get_authors(title_yMax, page, authors);
 
 
 
 
-    if (title_font_size > 1 && strlen(authors)) {
-        strcpy(result->title, title);
-        strcpy(result->authors, authors);
-        return 1;
-    }
+
+//    if (title_font_size > 1 /*&& strlen(authors)*/) {
+//        strcpy(result->title, title);
+//        //strcpy(result->authors, authors);
+//        //return 1;
+//    }
 
 
     return 0;

@@ -154,6 +154,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
         if(*result.doi!=0) json_object_set(obj, "doi", json_string(result.doi));
         if(*result.isbn!=0) json_object_set(obj, "isbn", json_string(result.isbn));
         if(*result.arxiv!=0) json_object_set(obj, "arxiv", json_string(result.arxiv));
+        if(*result.abstract!=0) json_object_set(obj, "abstract", json_string(result.abstract));
     //}
 
     printf("title: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\n",

@@ -563,3 +563,27 @@ text_info_t text_get_info(uint8_t *text) {
 
     return text_info;
 }
+
+uint32_t get_alphabetic_percent(uint8_t *text) {
+
+    uint32_t total = 0;
+
+    uint32_t alphabetic = 0;
+
+    uint32_t s, i = 0;
+    UChar32 c;
+
+    do {
+        s = i;
+        U8_NEXT(text, i, -1, c);
+
+        if (!c) break;
+
+        total++;
+
+        if (u_isUAlphabetic(c)) alphabetic++;
+
+    } while (1);
+
+    return alphabetic*100/total;
+}
