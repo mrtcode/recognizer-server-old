@@ -40,6 +40,7 @@
 #include "rh.h"
 #include "log.h"
 #include "wordlist.h"
+#include "journal.h"
 
 onion *on = NULL;
 pthread_rwlock_t data_rwlock;
@@ -142,27 +143,39 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     pthread_rwlock_unlock(&data_rwlock);
 
-
     uint32_t elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
 
     json_t *obj = json_object();
 
     json_object_set_new(obj, "time", json_integer(elapsed));
-    //if (rc) {
+//    if (0) {
         json_object_set(obj, "title", json_string(result.title));
         json_object_set(obj, "authors", authors_to_json(result.authors));
         if(*result.doi!=0) json_object_set(obj, "doi", json_string(result.doi));
         if(*result.isbn!=0) json_object_set(obj, "isbn", json_string(result.isbn));
         if(*result.arxiv!=0) json_object_set(obj, "arxiv", json_string(result.arxiv));
         if(*result.abstract!=0) json_object_set(obj, "abstract", json_string(result.abstract));
-    //}
+        if(*result.year!=0) json_object_set(obj, "year", json_string(result.year));
+        if(*result.journal!=0) json_object_set(obj, "journal", json_string(result.journal));
+        if(*result.pages!=0) json_object_set(obj, "pages", json_string(result.pages));
+        if(*result.volume!=0) json_object_set(obj, "volume", json_string(result.volume));
+        if(*result.issue!=0) json_object_set(obj, "issue", json_string(result.issue));
+        if(*result.issn!=0) json_object_set(obj, "issn", json_string(result.issue));
+//    }
 
-    printf("title: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\n",
+    printf("title: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\njournal: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
            result.title,
            result.authors,
            result.doi,
            result.isbn,
-           result.arxiv
+           result.arxiv,
+           result.year,
+           result.journal,
+           result.abstract,
+           result.pages,
+           result.volume,
+           result.issue,
+           result.issn
     );
 
     char *str = json_dumps(obj, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
@@ -212,7 +225,6 @@ onion_connection_status url_index2(void *_, onion_request *req, onion_response *
                         json_is_string(json_authors) &&
                         json_is_string(json_doi)) {
 
-
                         uint8_t *title = json_string_value(json_title);
                         uint8_t *authors = json_string_value(json_authors);
                         uint8_t *doi = json_string_value(json_doi);
@@ -220,7 +232,6 @@ onion_connection_status url_index2(void *_, onion_request *req, onion_response *
                         if (index_metadata2(title, authors, doi)) {
                             indexed++;
                         }
-
                     }
                 }
             }
@@ -453,6 +464,24 @@ int main(int argc, char **argv) {
 //    printf("alphabetic: %d %d\n",unorm2_composePair(unorm2, 97,778), u_charType(778));
 //
 //return 0;
+
+    journal_init();
+
+//    uint8_t output_text[MAX_LOOKUP_TEXT_LEN];
+//    uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
+//    text_process("internationaljournalofengineeringandtechnology", output_text, &output_text_len, 0, 0);
+//
+//
+//    uint64_t title_hash = text_hash64(output_text, output_text_len);
+//
+//    uint8_t jj = journal_has(title_hash);
+//
+//    if(jj) {
+//        printf("found\n");
+//    }
+
+
+
     wordlist_init();
 
     //test_authors();

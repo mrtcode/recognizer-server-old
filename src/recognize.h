@@ -11,6 +11,12 @@ typedef struct res_metadata {
     uint8_t isbn[14];
     uint8_t arxiv[256];
     uint8_t abstract[10000];
+    uint8_t journal[512];
+    uint8_t year[5];
+    uint8_t pages[32];
+    uint8_t volume[32];
+    uint8_t issue[32];
+    uint8_t issn[32];
 } res_metadata_t;
 
 typedef struct pdf_metadata {
