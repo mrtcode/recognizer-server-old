@@ -313,8 +313,8 @@ int get_groups(page_t *page, grouped_blocks_t *grouped_blocks, uint32_t *grouped
 //                        if (gb.xMin - block2->xMax > 20 || block2->xMax - gb.xMax > 20) continue;
 
 
-                        if(!(block->xMin+10>=block2->xMin && block->xMax-10<=block2->xMax ||
-                                block2->xMin+10>=block->xMin && block2->xMax-10<=block->xMax)) {
+                        if (!(block->xMin + 10 >= block2->xMin && block->xMax - 10 <= block2->xMax ||
+                              block2->xMin + 10 >= block->xMin && block2->xMax - 10 <= block->xMax)) {
                             continue;
                         }
 
@@ -642,7 +642,7 @@ int get_authors2(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *
             if (u_isUAlphabetic(uchar->c)) {
                 if (u_isUUppercase(uchar->c)) {
                     U8_APPEND(names[names_len], cur_name_len, 100, uchar->c, error);
-                    names[names_len][cur_name_len]=0;
+                    names[names_len][cur_name_len] = 0;
 //                    printf("v: %s\n", names[names_len]);
                     if (error) {
                         return 0;
@@ -677,7 +677,7 @@ int get_authors2(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *
                 goto end;
             } else if (u_isUAlphabetic(uchar->c) || uchar->c == '-') {
                 U8_APPEND(names[names_len], cur_name_len, 100, uchar->c, error);
-                names[names_len][cur_name_len]=0;
+                names[names_len][cur_name_len] = 0;
 //                printf("v: %s\n", names[names_len]);
                 if (error) {
                     return 0;
@@ -701,7 +701,7 @@ int get_authors2(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *
             memcpy(authors[*authors_len].names, names, 4 * 128);
             authors[*authors_len].names_len = names_len;
             (*authors_len)++;
-        } else if(names_len!=0)
+        } else if (names_len != 0)
             return 0;
         n = 0;
         names_len = 0;
@@ -830,7 +830,7 @@ int get_authors(double title_yMax, page_t *page, uint8_t *au) {
 
                     }
 
-                    if(authors_len==1 && negative) return 0;
+                    if (authors_len == 1 && negative) return 0;
 
                     if (negative == author->names_len) return 0;
 
@@ -947,9 +947,9 @@ int extract_doi(uint8_t *text, uint8_t *doi, uint32_t doi_max_len) {
         int32_t start = uregex_start(regEx, 0, &uStatus);
         int32_t end = uregex_end(regEx, 0, &uStatus);
 
-        if(end-start>max_len) {
+        if (end - start > max_len) {
             ucnv_fromUChars(conv, doi, target_len, uc + start, end - start, &uStatus);
-            max_len = end-start;
+            max_len = end - start;
         }
 
         ret = 1;
@@ -1234,13 +1234,13 @@ uint32_t is_simple_abstract_name(uint8_t *text) {
 }
 
 int is_dot_last(uint8_t *text) {
-    uint8_t *c = &text[strlen(text)-1];
+    uint8_t *c = &text[strlen(text) - 1];
 
-    while(c>=text) {
-        if(*c==' ' || *c=='\n' || *c=='\r') {
+    while (c >= text) {
+        if (*c == ' ' || *c == '\n' || *c == '\r') {
 
         } else {
-            if(*c=='.') {
+            if (*c == '.') {
                 return 1;
             } else {
                 return 0;
@@ -1312,11 +1312,11 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
 
                                 if (finish) {
 
-                                    if(!txt_xMin || txt_xMin > word->xMin) {
+                                    if (!txt_xMin || txt_xMin > word->xMin) {
                                         txt_xMin = word->xMin;
                                     }
 
-                                    if(!txt_xMax || txt_xMax < word->xMax) {
+                                    if (!txt_xMax || txt_xMax < word->xMax) {
                                         txt_xMax = word->xMax;
                                     }
 //                                    if(abstract_xMax && word->xMin > abstract_xMax) {
@@ -1330,7 +1330,7 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
                                         return 0;
                                     }
 
-                                    abstract[abstract_len]=0;
+                                    abstract[abstract_len] = 0;
                                 }
                             }
                         } while (1);
@@ -1342,7 +1342,7 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
                                 if (finish) {
                                     if (word->space_after) {
                                         abstract[abstract_len++] = ' ';
-                                        abstract[abstract_len]=0;
+                                        abstract[abstract_len] = 0;
                                     }
                                 }
                             }
@@ -1353,27 +1353,26 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
                 if (finish) {
                     if (abstract_len && abstract[abstract_len - 1] == '-') {
                         abstract_len--;
-                        abstract[abstract_len]=0;
+                        abstract[abstract_len] = 0;
                     } else {
                         abstract[abstract_len++] = ' ';
-                        abstract[abstract_len]=0;
+                        abstract[abstract_len] = 0;
 
                     }
                 }
 
 
-
                 if (finish) {
 
                     printf("line: %f\n", line->xMax);
-                    if ( is_dot_last(abstract) &&
-                            line_i >= 2 &&
-                            fabs(block->lines[line_i-2].xMax-block->lines[line_i-1].xMax)<1.0 &&
-                            block->lines[line_i].xMax < block->lines[line_i - 1].xMax - 2) {
+                    if (is_dot_last(abstract) &&
+                        line_i >= 2 &&
+                        fabs(block->lines[line_i - 2].xMax - block->lines[line_i - 1].xMax) < 1.0 &&
+                        block->lines[line_i].xMax < block->lines[line_i - 1].xMax - 2) {
                         printf("%s\n\n\n", abstract);
                         abstract[abstract_len] = 0;
 
-                        if(abstract_xMax>txt_xMax || abstract_xMax<txt_xMin) {
+                        if (abstract_xMax > txt_xMax || abstract_xMax < txt_xMin) {
                             return 0;
                         }
                         return 1;
@@ -1383,10 +1382,10 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
 
             if (finish) {
 //                printf("%s\n\n\n", abstract);
-                if(!is_dot_last(abstract)) continue;
+                if (!is_dot_last(abstract)) continue;
                 abstract[abstract_len] = 0;
 
-                if(abstract_xMax>txt_xMax || abstract_xMax<txt_xMin) {
+                if (abstract_xMax > txt_xMax || abstract_xMax < txt_xMin) {
                     return 0;
                 }
                 return 1;
@@ -1397,7 +1396,7 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
             printf("%s\n\n\n", abstract);
             abstract[abstract_len] = 0;
 
-            if(abstract_xMax>txt_xMax || abstract_xMax<txt_xMin) {
+            if (abstract_xMax > txt_xMax || abstract_xMax < txt_xMin) {
                 return 0;
             }
             return 1;
@@ -1489,16 +1488,16 @@ int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstra
                     if (abstract_len) abstract[abstract_len++] = '\n';
                     printf("\n\n");
 
-                    if(xMin) {
-                        if(fabs(xMin - line->words[0].xMin)>2) {
+                    if (xMin) {
+                        if (fabs(xMin - line->words[0].xMin) > 2) {
                             return 0;
                         }
                     } else {
                         xMin = line->words[0].xMin;
                     }
 
-                    if(fontSize) {
-                        if(fabs(fontSize - line->words[0].font_size)>1) {
+                    if (fontSize) {
+                        if (fabs(fontSize - line->words[0].font_size) > 1) {
                             return 0;
                         }
                     } else {
@@ -1911,7 +1910,7 @@ int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
                 block_t *block = flow->blocks + block_i;
 
                 // At the very end or top of page can only be an injected text
-                if(block->yMin<15 || block->yMax>page->height-15) continue;
+                if (block->yMin < 15 || block->yMax > page->height - 15) continue;
 
                 for (uint32_t page2_i = page_i + 1; page2_i < doc->pages_len && page2_i <= page_i + 2; page2_i++) {
                     page_t *page2 = doc->pages + page2_i;
@@ -1931,8 +1930,8 @@ int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
                             if (
                                     fabs(block->xMin - block2->xMin) < 10 &&
                                     fabs(block->yMin - block2->yMin) < 10 &&
-                                    fabs(width1-width2) < 10 &&
-                                    fabs(height1-height2) < 10) {
+                                    fabs(width1 - width2) < 10 &&
+                                    fabs(height1 - height2) < 10) {
                                 uint8_t data1[10000] = {0};
                                 uint8_t data2[10000] = {0};
                                 get_block_text(block, data1);
@@ -1999,9 +1998,9 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
 
         uint8_t *e;
 
-        uint32_t tokens_num=0;
+        uint32_t tokens_num = 0;
 
-        while(*s) {
+        while (*s) {
             while (*s == ' ') s++;
 
             e = s;
@@ -2015,7 +2014,7 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
             s = e;
         }
 
-        if(tokens_num<2) continue;
+        if (tokens_num < 2) continue;
 
 
         uint8_t output_text22[MAX_LOOKUP_TEXT_LEN];
@@ -2035,6 +2034,348 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
 
     free(uc);
 }
+
+block_t *get_jstor_block(page_t *page) {
+
+    for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
+
+        flow_t *flow = &page->flows[flow_i];
+
+        for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
+            block_t *block = &flow->blocks[block_i];
+
+            for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
+                line_t *line = block->lines + line_i;
+
+                uint8_t line_str[512] = {0};
+                uint32_t line_str_len = 0;
+
+                for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
+                    word_t *word = line->words + word_i;
+
+                    if (line_str_len + word->text_len > 500) break;
+
+                    memcpy(line_str + line_str_len, word->text, word->text_len);
+                    (line_str_len) += word->text_len;
+
+                    if (word->space_after) {
+                        *(line_str + line_str_len) = ' ';
+                        (line_str_len)++;
+                    }
+                }
+
+                if (!strncmp(line_str, "Stable URL: http://www.jstor.org/stable/", 40)) {
+                    return block;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+int extract_jstor2(page_t *page, res_metadata_t *result) {
+
+    uint8_t text[10000] = {0};
+    uint32_t text_len = 0;
+
+    uint8_t acc[1024] = {0};
+    uint32_t acc_len = 0;
+
+    uint8_t in_title = 1;
+    uint8_t in_authors = 0;
+    uint8_t in_review_by = 0;
+    uint8_t in_source = 0;
+
+    uint8_t title[1024] = {0};
+    uint8_t authors[1024] = {0};
+    uint8_t review_by[1024] = {0};
+    uint8_t source[1024] = {0};
+
+    uint8_t finish = 0;
+
+    block_t *block = get_jstor_block(page);
+
+    if(!block) return 0;
+
+    for (uint32_t line_i = 0; line_i < block->lines_len && !finish; line_i++) {
+        line_t *line = block->lines + line_i;
+
+        uint8_t line_str[512] = {0};
+        uint32_t line_str_len = 0;
+
+
+        for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
+            word_t *word = line->words + word_i;
+
+            memcpy(line_str + line_str_len, word->text, word->text_len);
+            (line_str_len) += word->text_len;
+
+            if (word->space_after) {
+                *(line_str + line_str_len) = ' ';
+                (line_str_len)++;
+            }
+        }
+
+        if (!strncmp(line_str, "Author(s): ", 11)) {
+            if (in_title) {
+                in_title = 0;
+            }
+
+            in_authors = 1;
+            strcat(authors, line_str + 11);
+        } else if (!strncmp(line_str, "Review by: ", 11)) {
+
+            if (in_title) {
+                in_title = 0;
+            }
+
+            if (in_authors) {
+                in_authors = 0;
+            }
+
+            in_review_by = 1;
+            strcat(review_by, line_str + 11);
+
+        } else if (!strncmp(line_str, "Source: ", 8) || strstr(line_str, "Vol. ") || strstr(line_str, "pp. ")) {
+            if (in_title) {
+                in_title = 0;
+            }
+
+            if (in_authors) {
+                in_authors = 0;
+            }
+
+            if (in_review_by) {
+                in_review_by = 0;
+            }
+
+            in_source = 1;
+
+            if (!strncmp(line_str, "Source: ", 8)) {
+                strcat(source, line_str + 8);
+            } else {
+                strcat(source, line_str);
+            }
+        } else if (!strncmp(line_str, "Published by: ", 14)) {
+            finish = 1;
+            break;
+        } else if (!strncmp(line_str, "Stable URL: ", 12)) {
+            finish = 1;
+            break;
+        } else {
+            if (in_title) {
+                strcat(title, line_str);
+                strcat(title, " ");
+            }
+
+            if (in_authors) {
+                strcat(authors, line_str);
+                strcat(authors, " ");
+            }
+
+            if (in_review_by) {
+                strcat(review_by, line_str);
+                strcat(review_by, " ");
+            }
+
+            if (in_source) {
+                strcat(source, line_str);
+                strcat(source, " ");
+            }
+        }
+
+
+        printf("LL: %s\n", line_str);
+    }
+
+
+    printf("title: %s\nauthors: %s\nreview_by: %s\nsource: %s\n", title, authors, review_by, source);
+
+    strcpy(result->title, title);
+
+    if (*review_by) {
+        uint8_t *s = review_by;
+        uint8_t *e;
+        while (1) {
+            e = strstr(s, ", ");
+            if (e) {
+                *e = 0;
+                strcat(result->authors, s);
+                strcat(result->authors, "\n");
+                e++;
+                continue;
+            }
+
+            e = strstr(s, " and ");
+            if (e) {
+                *e = 0;
+                strcat(result->authors, s);
+                strcat(result->authors, "\n");
+
+                e++;
+                continue;
+            }
+
+            strcat(result->authors, s);
+            strcat(result->authors, "\n");
+
+            break;
+        }
+
+    } else if (*authors) {
+        uint8_t *s = authors;
+        uint8_t *e;
+        while (1) {
+            e = strstr(s, ", ");
+            if (e) {
+                *e = 0;
+                strcat(result->authors, s);
+                strcat(result->authors, "\n");
+                e++;
+                continue;
+            }
+
+            e = strstr(s, " and ");
+            if (e) {
+                *e = 0;
+                strcat(result->authors, s);
+                strcat(result->authors, "\n");
+
+                e++;
+                continue;
+            }
+
+            strcat(result->authors, s);
+            strcat(result->authors, "\n");
+
+            break;
+        }
+    }
+
+    uint8_t journal[1024] = {0};
+    uint8_t volume[256] = {0};
+    uint8_t issue[256] = {0};
+    uint8_t year[5] = {0};
+    uint8_t month[4] = {0};
+    uint8_t pages[128] = {0};
+
+
+    uint8_t *vol;
+    uint8_t *no;
+    uint8_t *pg;
+
+    vol = strstr(source, ", Vol. ");
+
+    if (vol) {
+        uint8_t *c = vol + 7;
+        uint8_t *v = volume;
+        while (*c >= '0' && *c <= '9' && v - volume < 10) {
+            *v++ = *c++;
+        }
+
+        if (vol - source < sizeof(result->journal) - 1) {
+            memcpy(result->journal, source, vol - source);
+            result->journal[vol - source] = 0;
+        }
+
+        strcpy(result->volume, volume);
+    }
+
+    no = strstr(source, ", No. ");
+
+    if (no) {
+        uint8_t *c = no + 6;
+        uint8_t *v = issue;
+        while (*c >= '0' && *c <= '9' && v - issue < 10) {
+            *v++ = *c++;
+        }
+
+        strcpy(result->issue, issue);
+
+        if (*c != 0 && *(c + 1) == '(' && *(c + 12) == ')') {
+            memcpy(month, c + 2, 3);
+            memcpy(result->year, c + 8, 4);
+            printf("FOUND DATE: %s\n", c);
+        }
+
+        if (!*journal) {
+            if (vol - source < sizeof(result->journal) - 1) {
+                memcpy(result->journal, source, vol - source);
+                result->journal[vol - source] = 0;
+            }
+        }
+    }
+
+
+    pg = strstr(source, ", p. ");
+    if (!pg) {
+        pg = strstr(source, ", pp. ");
+    }
+
+    if (pg) {
+        strcpy(result->pages, pg + 6);
+
+    }
+
+
+    printf("journal: %s\n", result->journal);
+    printf("volume: %s\n", volume);
+    printf("issue: %s\n", issue);
+    printf("year: %s\n", year);
+    printf("month: %s\n", month);
+    printf("pages: %s\n", pages);
+
+
+    printf("JSTOR: %s\n", text);
+
+    // Author(s):
+    // Review by:
+    // Source:
+    // Published by
+    // Stable URL:
+
+
+
+//    uint32_t ret = 0;
+//
+//    UErrorCode errorCode = U_ZERO_ERROR;
+//    int32_t target_len;
+//
+//    uint32_t text_len = strlen(text);
+//
+//    UConverter *conv = ucnv_open("UTF-8", &errorCode);
+//
+//    target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
+//    UChar *uc = malloc(target_len);
+//
+//    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+//
+//    URegularExpression *regEx;
+//    const char regText[] = "/www.\\jstor\\.org\\/stable\\/(\\S+)";
+//    UErrorCode uStatus = U_ZERO_ERROR;
+//    UBool isMatch;
+//
+//    regEx = uregex_openC(regText, 0, NULL, &uStatus);
+//    uregex_setText(regEx, uc, -1, &uStatus);
+//    isMatch = uregex_find(regEx, 0, &uStatus);
+//    if (isMatch) {
+//        int32_t start = uregex_start(regEx, 1, &uStatus);
+//        int32_t end = uregex_end(regEx, 1, &uStatus);
+//
+//        strcpy(doi, "10.2307/");
+//        ucnv_fromUChars(conv, doi + 8, target_len, uc + start, end - start, &uStatus);
+//        ret = 1;
+//    }
+//
+//    uregex_close(regEx);
+//
+//    free(uc);
+//
+//    return ret;
+}
+
 
 uint32_t recognize2(json_t *body, res_metadata_t *result) {
     memset(result, 0, sizeof(res_metadata_t));
@@ -2099,11 +2440,14 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
         }
     }
 
+
+    extract_jstor2(&doc->pages[0], result);
+
     uint32_t injected_pages = 0;
 
     page_t *page = &doc->pages[0];
 
-    for(uint32_t i=0;i<doc->pages_len;i++) {
+    for (uint32_t i = 0; i < doc->pages_len; i++) {
         page_t *pg = &doc->pages[i];
         if (
                 extract_abstract_structured(pg, result->abstract, sizeof(result->abstract)) ||
@@ -2115,7 +2459,7 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
     }
 
-    if(!injected_pages) {
+    if (!injected_pages) {
         if ((is_first_page_missing_fonts(doc) || is_first_page_injected(doc))
             && doc->pages_len >= 2 && doc->pages[1].flows_len) {
             injected_pages++;
@@ -2178,11 +2522,11 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
     extract_from_headfoot(doc, journal_name, &volume, &issue, &year);
 
-    if(volume) {
+    if (volume) {
         sprintf(result->volume, "%d", volume);
     }
 
-    if(issue) {
+    if (issue) {
         sprintf(result->issue, "%d", issue);
     }
 
@@ -2200,27 +2544,25 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     uint8_t issn[32] = {0};
     extract_issn(output_text11, issn);
 
-    if(*issn) {
+    if (*issn) {
         strcpy(result->issn, issn);
     }
     printf("ISSN: %s\n", issn);
 
 
+    uint8_t *c = &result->abstract[strlen(result->abstract) - 1];
 
-
-    uint8_t *c = &result->abstract[strlen(result->abstract)-1];
-
-    while(c>=result->abstract) {
-        if(*c==' ' || *c=='\n' || *c=='\r') {
-            *c=0;
+    while (c >= result->abstract) {
+        if (*c == ' ' || *c == '\n' || *c == '\r') {
+            *c = 0;
         } else {
             break;
         }
         c--;
     }
 
-    if(*result->abstract && result->abstract[strlen(result->abstract)-1]!='.') {
-        *result->abstract=0;
+    if (*result->abstract && result->abstract[strlen(result->abstract) - 1] != '.') {
+        *result->abstract = 0;
     }
 
 
