@@ -149,6 +149,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     json_object_set_new(obj, "time", json_integer(elapsed));
 //    if (0) {
+        if(*result.type!=0) json_object_set(obj, "type", json_string(result.type));
         json_object_set(obj, "title", json_string(result.title));
         json_object_set(obj, "authors", authors_to_json(result.authors));
         if(*result.doi!=0) json_object_set(obj, "doi", json_string(result.doi));
@@ -156,21 +157,22 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
         if(*result.arxiv!=0) json_object_set(obj, "arxiv", json_string(result.arxiv));
         if(*result.abstract!=0) json_object_set(obj, "abstract", json_string(result.abstract));
         if(*result.year!=0) json_object_set(obj, "year", json_string(result.year));
-        if(*result.journal!=0) json_object_set(obj, "journal", json_string(result.journal));
+        if(*result.container!=0) json_object_set(obj, "container", json_string(result.container));
         if(*result.pages!=0) json_object_set(obj, "pages", json_string(result.pages));
         if(*result.volume!=0) json_object_set(obj, "volume", json_string(result.volume));
         if(*result.issue!=0) json_object_set(obj, "issue", json_string(result.issue));
         if(*result.issn!=0) json_object_set(obj, "issn", json_string(result.issue));
 //    }
 
-    printf("title: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\njournal: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
+    printf("type: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
+           result.type,
            result.title,
            result.authors,
            result.doi,
            result.isbn,
            result.arxiv,
            result.year,
-           result.journal,
+           result.container,
            result.abstract,
            result.pages,
            result.volume,

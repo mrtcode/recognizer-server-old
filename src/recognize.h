@@ -5,13 +5,14 @@
 #define MAX_IDENTIFIERS 20
 
 typedef struct res_metadata {
+    uint8_t type[128];
     uint8_t title[MAX_TITLE_LEN + 1];
     uint8_t authors[MAX_AUTHORS_LEN + 1];
     uint8_t doi[1024];
     uint8_t isbn[14];
     uint8_t arxiv[256];
     uint8_t abstract[10000];
-    uint8_t journal[512];
+    uint8_t container[512];
     uint8_t year[5];
     uint8_t pages[32];
     uint8_t volume[32];

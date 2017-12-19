@@ -385,6 +385,7 @@ int block_to_text(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t ma
     return 1;
 }
 
+
 int doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
     *text_len = 0;
 
@@ -2035,8 +2036,77 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
     free(uc);
 }
 
-block_t *get_jstor_block(page_t *page) {
+int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][512], uint32_t *groups_len) {
+    uint32_t ret = 0;
 
+    UErrorCode errorCode = U_ZERO_ERROR;
+    int32_t target_len;
+
+    uint32_t text_len = strlen(text);
+
+    UConverter *conv = ucnv_open("UTF-8", &errorCode);
+
+    target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
+    UChar *uc = malloc(target_len);
+
+    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+
+    URegularExpression *regEx;
+    UErrorCode uStatus = U_ZERO_ERROR;
+
+    regEx = uregex_openC(regText, 0, NULL, &uStatus);
+    uregex_setText(regEx, uc, -1, &uStatus);
+
+
+    if (uregex_findNext(regEx, &uStatus)) {
+        *groups_len = uregex_groupCount(regEx, &uStatus);
+
+        for (uint32_t i = 1; i < *groups_len+1; i++) {
+            int32_t start = uregex_start(regEx, i, &uStatus);
+            int32_t end = uregex_end(regEx, i, &uStatus);
+
+            if (end - start < 500) {
+                ucnv_fromUChars(conv, groups[i], target_len, uc + start, end - start, &uStatus);
+            }
+        }
+        ret = 1;
+    }
+
+    uregex_close(regEx);
+
+    free(uc);
+
+    return ret;
+}
+
+
+int block_to_text2(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+    *text_len = 0;
+    for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
+        line_t *line = block->lines + line_i;
+
+        for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
+            word_t *word = line->words + word_i;
+
+            if ((*text_len) + word->text_len >= max_text_size) return 0;
+            memcpy(text + *text_len, word->text, word->text_len);
+            (*text_len) += word->text_len;
+
+            if (word->space_after) {
+                *(text + *text_len) = ' ';
+                (*text_len)++;
+            }
+        }
+        *(text + *text_len) = '\n';
+        (*text_len)++;
+    }
+    *(text + *text_len) = 0;
+    return 1;
+}
+
+int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+
+    *text_len = 0;
     for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
 
         flow_t *flow = &page->flows[flow_i];
@@ -2064,167 +2134,126 @@ block_t *get_jstor_block(page_t *page) {
                     }
                 }
 
+                if(*text_len+line_str_len>max_text_size-1) return 0;
+                memcpy(text + *text_len, line_str, line_str_len);
+                (*text_len) += line_str_len;
+
+                text[(*text_len)++] = '\n';
+//                text[++(*text_len)] = 0;
+
                 if (!strncmp(line_str, "Stable URL: http://www.jstor.org/stable/", 40)) {
-                    return block;
+                    return 1;
                 }
             }
+            text[(*text_len)++] = '\n';
         }
     }
 
     return 0;
 }
 
-
 int extract_jstor2(page_t *page, res_metadata_t *result) {
 
-    uint8_t text[10000] = {0};
-    uint32_t text_len = 0;
-
-    uint8_t acc[1024] = {0};
-    uint32_t acc_len = 0;
-
-    uint8_t in_title = 1;
-    uint8_t in_authors = 0;
-    uint8_t in_review_by = 0;
-    uint8_t in_source = 0;
-
+    uint8_t container_title[1024] = {0};
     uint8_t title[1024] = {0};
     uint8_t authors[1024] = {0};
-    uint8_t review_by[1024] = {0};
     uint8_t source[1024] = {0};
 
-    uint8_t finish = 0;
+    uint8_t text[4096] = {0};
+    uint32_t text_len = 0;
 
-    block_t *block = get_jstor_block(page);
-
-    if(!block) return 0;
-
-    for (uint32_t line_i = 0; line_i < block->lines_len && !finish; line_i++) {
-        line_t *line = block->lines + line_i;
-
-        uint8_t line_str[512] = {0};
-        uint32_t line_str_len = 0;
+    if (!get_jstor_data(page, text, &text_len, sizeof(text))) return 0;
 
 
-        for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
-            word_t *word = line->words + word_i;
 
-            memcpy(line_str + line_str_len, word->text, word->text_len);
-            (line_str_len) += word->text_len;
+    uint8_t is_book = 0;
 
-            if (word->space_after) {
-                *(line_str + line_str_len) = ' ';
-                (line_str_len)++;
-            }
+
+    uint8_t *text_start;
+
+    text_start = strstr(text, "Chapter Title: ");
+
+    if(text_start) {
+        is_book = 1;
+    } else {
+        text_start = strstr(text, "\n\n");
+        if(text_start) {
+            text_start += 2;
         }
+    }
 
-        if (!strncmp(line_str, "Author(s): ", 11)) {
-            if (in_title) {
-                in_title = 0;
-            }
+    if(!text_start) text_start = text;
 
-            in_authors = 1;
-            strcat(authors, line_str + 11);
-        } else if (!strncmp(line_str, "Review by: ", 11)) {
-
-            if (in_title) {
-                in_title = 0;
-            }
-
-            if (in_authors) {
-                in_authors = 0;
-            }
-
-            in_review_by = 1;
-            strcat(review_by, line_str + 11);
-
-        } else if (!strncmp(line_str, "Source: ", 8) || strstr(line_str, "Vol. ") || strstr(line_str, "pp. ")) {
-            if (in_title) {
-                in_title = 0;
-            }
-
-            if (in_authors) {
-                in_authors = 0;
-            }
-
-            if (in_review_by) {
-                in_review_by = 0;
-            }
-
-            in_source = 1;
-
-            if (!strncmp(line_str, "Source: ", 8)) {
-                strcat(source, line_str + 8);
-            } else {
-                strcat(source, line_str);
-            }
-        } else if (!strncmp(line_str, "Published by: ", 14)) {
-            finish = 1;
-            break;
-        } else if (!strncmp(line_str, "Stable URL: ", 12)) {
-            finish = 1;
-            break;
-        } else {
-            if (in_title) {
-                strcat(title, line_str);
-                strcat(title, " ");
-            }
-
-            if (in_authors) {
-                strcat(authors, line_str);
-                strcat(authors, " ");
-            }
-
-            if (in_review_by) {
-                strcat(review_by, line_str);
-                strcat(review_by, " ");
-            }
-
-            if (in_source) {
-                strcat(source, line_str);
-                strcat(source, " ");
-            }
-        }
-
-
-        printf("LL: %s\n", line_str);
+    if(!strstr(text, "Stable URL: http://www.jstor.org/stable/")) {
+        return 0;
     }
 
 
-    printf("title: %s\nauthors: %s\nreview_by: %s\nsource: %s\n", title, authors, review_by, source);
+    printf("BLOCK TEXT: %s", text_start);
+
+    uint8_t groups[10][512] = {0};
+    uint32_t groups_len = 0;
+
+    if(is_book) {
+
+        strcpy(result->type,"book-chapter");
+
+        if (extract_jt(text_start, "Chapter Title: ((?:\\n|.)*)\\nChapter Author\\(s\\): ((?:\\n|.)*)\\n\\n", groups,
+                       &groups_len)) {
+            strcpy(title, groups[1]);
+            strcpy(authors, groups[2]);
+        } else if (extract_jt(text_start, "Chapter Title: ((?:\\n|.)*)\\n\\n", groups,
+                       &groups_len)) {
+            strcpy(title, groups[1]);
+        }
+
+        if (extract_jt(text_start, "Book Title: ((?:\\n|.)*?)\\n(Book |Published by: )", groups,
+                       &groups_len)) {
+            strcpy(container_title, groups[1]);
+        }
+
+        if (extract_jt(text_start, "Book Subtitle: ((?:\\n|.)*?)\\n(Book |Published by: )", groups,
+                       &groups_len)) {
+            strcat(container_title, ": ");
+            strcat(container_title, groups[1]);
+        }
+
+
+        if (!*authors && extract_jt(text_start, "Book Author\\(s\\): ((?:\\n|.)*?)\\n(Book |Published by: )", groups,
+                       &groups_len)) {
+            strcpy(authors, groups[1]);
+        }
+
+    } else {
+
+        strcpy(result->type,"journal-article");
+
+        if (extract_jt(text_start, "((?:\\n|.)*)\\nAuthor\\(s\\): (.*)\\nReview by: (.*)\\nSource: (.*)\\n", groups,
+                       &groups_len)) {
+            strcpy(title, groups[1]);
+            strcpy(authors, groups[3]);
+            strcpy(source, groups[4]);
+        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nAuthor\\(s\\): (.*)\\nSource: (.*)\\n", groups, &groups_len)) {
+            strcpy(title, groups[1]);
+            strcpy(authors, groups[2]);
+            strcpy(source, groups[3]);
+        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nReview by: (.*)\\nSource: (.*)\\n", groups, &groups_len)) {
+            strcpy(title, groups[1]);
+            strcpy(authors, groups[2]);
+            strcpy(source, groups[3]);
+        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nSource: (.*)\\n", groups, &groups_len)) {
+            strcpy(title, groups[1]);;
+            strcpy(source, groups[2]);
+        }
+    }
+
+    printf("title: %s\nauthors: %s\nsource: %s\n", title, authors, source);
 
     strcpy(result->title, title);
 
-    if (*review_by) {
-        uint8_t *s = review_by;
-        uint8_t *e;
-        while (1) {
-            e = strstr(s, ", ");
-            if (e) {
-                *e = 0;
-                strcat(result->authors, s);
-                strcat(result->authors, "\n");
-                e++;
-                continue;
-            }
+    strcpy(result->container, container_title);
 
-            e = strstr(s, " and ");
-            if (e) {
-                *e = 0;
-                strcat(result->authors, s);
-                strcat(result->authors, "\n");
-
-                e++;
-                continue;
-            }
-
-            strcat(result->authors, s);
-            strcat(result->authors, "\n");
-
-            break;
-        }
-
-    } else if (*authors) {
+   if (*authors) {
         uint8_t *s = authors;
         uint8_t *e;
         while (1) {
@@ -2275,9 +2304,9 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
             *v++ = *c++;
         }
 
-        if (vol - source < sizeof(result->journal) - 1) {
-            memcpy(result->journal, source, vol - source);
-            result->journal[vol - source] = 0;
+        if (vol - source < sizeof(result->container) - 1) {
+            memcpy(result->container, source, vol - source);
+            result->container[vol - source] = 0;
         }
 
         strcpy(result->volume, volume);
@@ -2301,9 +2330,9 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
         }
 
         if (!*journal) {
-            if (vol - source < sizeof(result->journal) - 1) {
-                memcpy(result->journal, source, vol - source);
-                result->journal[vol - source] = 0;
+            if (vol - source < sizeof(result->container) - 1) {
+                memcpy(result->container, source, vol - source);
+                result->container[vol - source] = 0;
             }
         }
     }
@@ -2320,65 +2349,24 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
     }
 
 
-    printf("journal: %s\n", result->journal);
+    printf("journal: %s\n", result->container);
     printf("volume: %s\n", volume);
     printf("issue: %s\n", issue);
     printf("year: %s\n", year);
     printf("month: %s\n", month);
     printf("pages: %s\n", pages);
+    printf("container-title: %s\n", container_title);
 
 
     printf("JSTOR: %s\n", text);
 
-    // Author(s):
-    // Review by:
-    // Source:
-    // Published by
-    // Stable URL:
-
-
-
-//    uint32_t ret = 0;
-//
-//    UErrorCode errorCode = U_ZERO_ERROR;
-//    int32_t target_len;
-//
-//    uint32_t text_len = strlen(text);
-//
-//    UConverter *conv = ucnv_open("UTF-8", &errorCode);
-//
-//    target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
-//    UChar *uc = malloc(target_len);
-//
-//    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
-//
-//    URegularExpression *regEx;
-//    const char regText[] = "/www.\\jstor\\.org\\/stable\\/(\\S+)";
-//    UErrorCode uStatus = U_ZERO_ERROR;
-//    UBool isMatch;
-//
-//    regEx = uregex_openC(regText, 0, NULL, &uStatus);
-//    uregex_setText(regEx, uc, -1, &uStatus);
-//    isMatch = uregex_find(regEx, 0, &uStatus);
-//    if (isMatch) {
-//        int32_t start = uregex_start(regEx, 1, &uStatus);
-//        int32_t end = uregex_end(regEx, 1, &uStatus);
-//
-//        strcpy(doi, "10.2307/");
-//        ucnv_fromUChars(conv, doi + 8, target_len, uc + start, end - start, &uStatus);
-//        ret = 1;
-//    }
-//
-//    uregex_close(regEx);
-//
-//    free(uc);
-//
-//    return ret;
 }
 
 
 uint32_t recognize2(json_t *body, res_metadata_t *result) {
     memset(result, 0, sizeof(res_metadata_t));
+
+    strcpy(result->type, "journal-article");
 
     json_t *json_metadata = json_object_get(body, "metadata");
     json_t *json_total_pages = json_object_get(body, "totalPages");
@@ -2409,6 +2397,8 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     uint32_t output_text_len11 = MAX_LOOKUP_TEXT_LEN;
 
     doc_to_text(doc, output_text11, &output_text_len11, MAX_LOOKUP_TEXT_LEN - 1);
+
+//    printf("%s", output_text11);
 
     uint8_t doi[1024];
     if (extract_doi(output_text11, doi, 1024)) {
@@ -2533,7 +2523,7 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     printf("JOURNAL NAME: %s\n", journal_name);
 
     if (*journal_name) {
-        strcpy(result->journal, journal_name);
+        strcpy(result->container, journal_name);
     }
 
     if (year) {
@@ -2637,17 +2627,6 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
             strcpy(result->doi, jstor_doi);
         }
     }
-
-
-
-
-
-
-//    if (title_font_size > 1 /*&& strlen(authors)*/) {
-//        strcpy(result->title, title);
-//        //strcpy(result->authors, authors);
-//        //return 1;
-//    }
 
 
     return 0;
