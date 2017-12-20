@@ -13,6 +13,7 @@ typedef struct res_metadata {
     uint8_t arxiv[256];
     uint8_t abstract[10000];
     uint8_t container[512];
+    uint8_t publisher[512];
     uint8_t year[5];
     uint8_t pages[32];
     uint8_t volume[32];

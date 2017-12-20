@@ -158,13 +158,14 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
         if(*result.abstract!=0) json_object_set(obj, "abstract", json_string(result.abstract));
         if(*result.year!=0) json_object_set(obj, "year", json_string(result.year));
         if(*result.container!=0) json_object_set(obj, "container", json_string(result.container));
+        if(*result.publisher!=0) json_object_set(obj, "publisher", json_string(result.publisher));
         if(*result.pages!=0) json_object_set(obj, "pages", json_string(result.pages));
         if(*result.volume!=0) json_object_set(obj, "volume", json_string(result.volume));
         if(*result.issue!=0) json_object_set(obj, "issue", json_string(result.issue));
         if(*result.issn!=0) json_object_set(obj, "issn", json_string(result.issue));
 //    }
 
-    printf("type: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
+    printf("type: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\npublisher: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
            result.type,
            result.title,
            result.authors,
@@ -173,6 +174,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
            result.arxiv,
            result.year,
            result.container,
+           result.publisher,
            result.abstract,
            result.pages,
            result.volume,

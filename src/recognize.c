@@ -54,18 +54,21 @@ typedef struct group {
 
 
 typedef struct word {
-    uint8_t space_after;
-    double font_size;
-    double baseline;
-    uint8_t rotation;
-    uint8_t bold;
-    uint8_t *fontName;
-    uint8_t *text;
-    uint32_t text_len;
     double xMin;
     double xMax;
     double yMin;
     double yMax;
+    uint8_t space_after;
+    double font_size;
+    double baseline;
+    uint8_t rotation;
+    uint8_t underlined;
+    uint8_t bold;
+    uint8_t italic;
+    uint32_t font;
+    uint32_t color;
+    uint8_t *text;
+    uint32_t text_len;
 } word_t;
 
 typedef struct line {
@@ -124,13 +127,13 @@ doc_t *get_doc(json_t *body) {
         json_t *json_obj = json_array_get(json_pages, page_i);
         page_t *page = doc->pages + page_i;
 
-        json_t *width = json_object_get(json_obj, "width");
-        json_t *height = json_object_get(json_obj, "height");
+        json_t *width = json_array_get(json_obj, 0);
+        json_t *height = json_array_get(json_obj, 1);
 
-        page->width = strtod(json_string_value(width), 0);
-        page->height = strtod(json_string_value(height), 0);
+        page->width =json_real_value(width);
+        page->height = json_real_value(height);
 
-        json_t *json_flows = json_object_get(json_obj, "flows");
+        json_t *json_flows = json_array_get(json_obj, 2);
         if (!json_is_array(json_flows)) return 0;
         page->flows_len = json_array_size(json_flows);
         page->flows = (flow_t *) malloc(sizeof(flow_t) * page->flows_len);
@@ -139,7 +142,7 @@ doc_t *get_doc(json_t *body) {
             json_t *json_obj = json_array_get(json_flows, flow_i);
             flow_t *flow = page->flows + flow_i;
 
-            json_t *json_blocks = json_object_get(json_obj, "blocks");
+            json_t *json_blocks = json_array_get(json_obj, 0);
             if (!json_is_array(json_blocks)) return 0;
             flow->blocks_len = json_array_size(json_blocks);
             flow->blocks = (block_t *) calloc(sizeof(block_t), flow->blocks_len);
@@ -153,17 +156,17 @@ doc_t *get_doc(json_t *body) {
                 block->text_len = 0;
 
 
-                json_t *xMin = json_object_get(json_obj, "xMin");
-                json_t *xMax = json_object_get(json_obj, "xMax");
-                json_t *yMin = json_object_get(json_obj, "yMin");
-                json_t *yMax = json_object_get(json_obj, "yMax");
+                json_t *xMin = json_array_get(json_obj, 0);
+                json_t *xMax = json_array_get(json_obj, 1);
+                json_t *yMin = json_array_get(json_obj, 2);
+                json_t *yMax = json_array_get(json_obj, 3);
 
-                block->xMin = strtod(json_string_value(xMin), 0);
-                block->xMax = strtod(json_string_value(xMax), 0);
-                block->yMin = strtod(json_string_value(yMin), 0);
-                block->yMax = strtod(json_string_value(yMax), 0);
+                block->xMin = json_real_value(xMin);
+                block->xMax = json_real_value(xMax);
+                block->yMin = json_real_value(yMin);
+                block->yMax = json_real_value(yMax);
 
-                json_t *json_lines = json_object_get(json_obj, "lines");
+                json_t *json_lines = json_array_get(json_obj, 4);
                 if (!json_is_array(json_lines)) return 0;
                 block->lines_len = json_array_size(json_lines);
                 block->lines = (line_t *) calloc(sizeof(line_t), block->lines_len);
@@ -171,7 +174,7 @@ doc_t *get_doc(json_t *body) {
                     json_t *json_obj = json_array_get(json_lines, line_i);
                     line_t *line = block->lines + line_i;
 
-                    json_t *json_words = json_object_get(json_obj, "words");
+                    json_t *json_words = json_array_get(json_obj, 0);
                     if (!json_is_array(json_words)) return 0;
                     line->words_len = json_array_size(json_words);
                     line->words = (word_t *) malloc(sizeof(word_t) * line->words_len);
@@ -181,27 +184,38 @@ doc_t *get_doc(json_t *body) {
                         json_t *json_obj = json_array_get(json_words, word_i);
                         word_t *word = line->words + word_i;
 
-                        json_t *xMin = json_object_get(json_obj, "xMin");
-                        json_t *xMax = json_object_get(json_obj, "xMax");
-                        json_t *yMin = json_object_get(json_obj, "yMin");
-                        json_t *yMax = json_object_get(json_obj, "yMax");
-                        json_t *spaceAfter = json_object_get(json_obj, "spaceAfter");
-                        json_t *bold = json_object_get(json_obj, "fontBold");
-                        json_t *fontSize = json_object_get(json_obj, "fontSize");
-                        json_t *baseline = json_object_get(json_obj, "baseline");
-                        json_t *rotation = json_object_get(json_obj, "rotation");
+                        json_t *xMin = json_array_get(json_obj, 0);
+                        json_t *yMin = json_array_get(json_obj, 1);
+                        json_t *xMax = json_array_get(json_obj, 2);
+                        json_t *yMax = json_array_get(json_obj, 3);
+                        json_t *fontSize = json_array_get(json_obj, 4);
+                        json_t *spaceAfter = json_array_get(json_obj, 5);
+                        json_t *baseline = json_array_get(json_obj, 6);
+                        json_t *rotation = json_array_get(json_obj, 7);
+                        json_t *underlined = json_array_get(json_obj, 8);
+                        json_t *bold = json_array_get(json_obj, 9);
+                        json_t *italic = json_array_get(json_obj, 10);
+                        json_t *color = json_array_get(json_obj, 11);
+                        json_t *font = json_array_get(json_obj, 12);
+                        json_t *text = json_array_get(json_obj, 13);
 
-                        word->xMin = strtod(json_string_value(xMin), 0);
-                        word->xMax = strtod(json_string_value(xMax), 0);
-                        word->yMin = strtod(json_string_value(yMin), 0);
-                        word->yMax = strtod(json_string_value(yMax), 0);
-                        word->font_size = strtod(json_string_value(fontSize), 0);
-                        word->space_after = strtol(json_string_value(spaceAfter), 0, 10);
-                        word->bold = strtol(json_string_value(bold), 0, 10);
-                        word->baseline = strtod(json_string_value(baseline), 0);
-                        word->rotation = strtol(json_string_value(rotation), 0, 10);
-                        word->fontName = json_string_value(json_object_get(json_obj, "fontName"));
 
+                        word->xMin = json_real_value(xMin);
+                        word->xMax = json_real_value(xMax);
+                        word->yMin = json_real_value(yMin);
+                        word->yMax = json_real_value(yMax);
+                        word->font_size = json_real_value(fontSize);
+                        word->space_after = json_integer_value(spaceAfter);
+                        word->baseline = json_real_value(baseline);
+                        word->rotation = json_integer_value(rotation);
+                        word->underlined = json_integer_value(rotation);
+                        word->bold = json_integer_value(bold);
+                        word->italic = json_integer_value(italic);
+                        word->color = json_integer_value(color);
+                        word->font = json_integer_value(font);
+
+                        word->text = json_string_value(text);
+                        word->text_len = strlen(word->text);
 
                         if (block->font_size_min == 0 || block->font_size_min > word->font_size) {
                             block->font_size_min = word->font_size;
@@ -211,9 +225,6 @@ doc_t *get_doc(json_t *body) {
                             block->font_size_max = word->font_size;
                         }
 
-                        word->text = json_string_value(json_object_get(json_obj, "text"));
-
-                        word->text_len = strlen(word->text);
                         block->text_len += word->text_len;
 
                         if (!line->xMin || line->xMin > word->xMin) line->xMin = word->xMin;
@@ -1053,46 +1064,6 @@ int extract_arxiv(uint8_t *text, uint8_t *arxiv) {
     return ret;
 }
 
-
-int extract_jstor(uint8_t *text, uint8_t *doi) {
-    uint32_t ret = 0;
-
-    UErrorCode errorCode = U_ZERO_ERROR;
-    int32_t target_len;
-
-    uint32_t text_len = strlen(text);
-
-    UConverter *conv = ucnv_open("UTF-8", &errorCode);
-
-    target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
-    UChar *uc = malloc(target_len);
-
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
-
-    URegularExpression *regEx;
-    const char regText[] = "/www.\\jstor\\.org\\/stable\\/(\\S+)";
-    UErrorCode uStatus = U_ZERO_ERROR;
-    UBool isMatch;
-
-    regEx = uregex_openC(regText, 0, NULL, &uStatus);
-    uregex_setText(regEx, uc, -1, &uStatus);
-    isMatch = uregex_find(regEx, 0, &uStatus);
-    if (isMatch) {
-        int32_t start = uregex_start(regEx, 1, &uStatus);
-        int32_t end = uregex_end(regEx, 1, &uStatus);
-
-        strcpy(doi, "10.2307/");
-        ucnv_fromUChars(conv, doi + 8, target_len, uc + start, end - start, &uStatus);
-        ret = 1;
-    }
-
-    uregex_close(regEx);
-
-    free(uc);
-
-    return ret;
-}
-
 int is_first_page_missing_fonts(doc_t *doc) {
     uint64_t fonts[100];
     uint32_t fonts_len = 0;
@@ -1111,7 +1082,7 @@ int is_first_page_missing_fonts(doc_t *doc) {
                 for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                     word_t *word = line->words + word_i;
 
-                    uint64_t font1 = text_hash64(word->fontName, strlen(word->fontName));
+                    uint64_t font1 = word->font;
 
                     uint8_t found = 0;
                     for (uint32_t i = 0; i < fonts_len; i++) {
@@ -1148,7 +1119,7 @@ int is_first_page_missing_fonts(doc_t *doc) {
                     for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                         word_t *word = line->words + word_i;
 
-                        uint64_t font1 = text_hash64(word->fontName, strlen(word->fontName));
+                        uint64_t font1 = word->font;
 
                         uint8_t found = 0;
                         for (uint32_t i = 0; i < fonts2_len; i++) {
@@ -2036,7 +2007,7 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
     free(uc);
 }
 
-int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][512], uint32_t *groups_len) {
+int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t *groups_len) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -2061,12 +2032,12 @@ int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][512], uint32_t 
     if (uregex_findNext(regEx, &uStatus)) {
         *groups_len = uregex_groupCount(regEx, &uStatus);
 
-        for (uint32_t i = 1; i < *groups_len+1; i++) {
+        for (uint32_t i = 1; i < *groups_len + 1; i++) {
             int32_t start = uregex_start(regEx, i, &uStatus);
             int32_t end = uregex_end(regEx, i, &uStatus);
 
-            if (end - start < 500) {
-                ucnv_fromUChars(conv, groups[i], target_len, uc + start, end - start, &uStatus);
+            if (end - start < 512) {
+                ucnv_fromUChars(conv, groups[i-1], target_len, uc + start, end - start, &uStatus);
             }
         }
         ret = 1;
@@ -2077,31 +2048,6 @@ int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][512], uint32_t 
     free(uc);
 
     return ret;
-}
-
-
-int block_to_text2(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
-    *text_len = 0;
-    for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
-        line_t *line = block->lines + line_i;
-
-        for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
-            word_t *word = line->words + word_i;
-
-            if ((*text_len) + word->text_len >= max_text_size) return 0;
-            memcpy(text + *text_len, word->text, word->text_len);
-            (*text_len) += word->text_len;
-
-            if (word->space_after) {
-                *(text + *text_len) = ' ';
-                (*text_len)++;
-            }
-        }
-        *(text + *text_len) = '\n';
-        (*text_len)++;
-    }
-    *(text + *text_len) = 0;
-    return 1;
 }
 
 int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
@@ -2134,7 +2080,7 @@ int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max
                     }
                 }
 
-                if(*text_len+line_str_len>max_text_size-1) return 0;
+                if (*text_len + line_str_len > max_text_size - 1) return 0;
                 memcpy(text + *text_len, line_str, line_str_len);
                 (*text_len) += line_str_len;
 
@@ -2153,17 +2099,14 @@ int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max
 }
 
 int extract_jstor2(page_t *page, res_metadata_t *result) {
-
-    uint8_t container_title[1024] = {0};
-    uint8_t title[1024] = {0};
-    uint8_t authors[1024] = {0};
-    uint8_t source[1024] = {0};
+    uint8_t authors[2048] = {0};
+    uint8_t source[2048] = {0};
+    uint8_t published_by[2048] = {0};
 
     uint8_t text[4096] = {0};
     uint32_t text_len = 0;
 
     if (!get_jstor_data(page, text, &text_len, sizeof(text))) return 0;
-
 
 
     uint8_t is_book = 0;
@@ -2173,87 +2116,85 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
 
     text_start = strstr(text, "Chapter Title: ");
 
-    if(text_start) {
+    if (text_start) {
         is_book = 1;
     } else {
         text_start = strstr(text, "\n\n");
-        if(text_start) {
+        if (text_start) {
             text_start += 2;
         }
     }
 
-    if(!text_start) text_start = text;
-
-    if(!strstr(text, "Stable URL: http://www.jstor.org/stable/")) {
-        return 0;
-    }
+    if (!text_start) text_start = text;
 
 
     printf("BLOCK TEXT: %s", text_start);
 
-    uint8_t groups[10][512] = {0};
+    uint8_t groups[10][2048] = {0};
     uint32_t groups_len = 0;
 
-    if(is_book) {
+    if (extract_jt(text, "Stable URL: http:\\/\\/www.\\jstor\\.org\\/stable\\/(\\S+)", groups,
+                   &groups_len)) {
+        sprintf(result->doi, "10.2307/%s", groups[0]);
+    } else {
+        return 0;
+    }
 
-        strcpy(result->type,"book-chapter");
-
+    if (is_book) {
+        strcpy(result->type, "book-chapter");
         if (extract_jt(text_start, "Chapter Title: ((?:\\n|.)*)\\nChapter Author\\(s\\): ((?:\\n|.)*)\\n\\n", groups,
                        &groups_len)) {
-            strcpy(title, groups[1]);
-            strcpy(authors, groups[2]);
+            strcpy(result->title, groups[0]);
+            strcpy(authors, groups[1]);
         } else if (extract_jt(text_start, "Chapter Title: ((?:\\n|.)*)\\n\\n", groups,
-                       &groups_len)) {
-            strcpy(title, groups[1]);
+                              &groups_len)) {
+            strcpy(result->title, groups[0]);
         }
 
         if (extract_jt(text_start, "Book Title: ((?:\\n|.)*?)\\n(Book |Published by: )", groups,
                        &groups_len)) {
-            strcpy(container_title, groups[1]);
+            strcpy(result->container, groups[0]);
         }
 
         if (extract_jt(text_start, "Book Subtitle: ((?:\\n|.)*?)\\n(Book |Published by: )", groups,
                        &groups_len)) {
-            strcat(container_title, ": ");
-            strcat(container_title, groups[1]);
+            strcat(result->container, ": ");
+            strcat(result->container, groups[0]);
         }
-
 
         if (!*authors && extract_jt(text_start, "Book Author\\(s\\): ((?:\\n|.)*?)\\n(Book |Published by: )", groups,
-                       &groups_len)) {
-            strcpy(authors, groups[1]);
+                                    &groups_len)) {
+            strcpy(authors, groups[0]);
         }
 
+        if (extract_jt(text_start, "Published by: ((?:\\n|.)*?)\\nStable URL: ", groups,
+                       &groups_len)) {
+            strcat(published_by, groups[0]);
+        }
     } else {
-
-        strcpy(result->type,"journal-article");
+        strcpy(result->type, "journal-article");
 
         if (extract_jt(text_start, "((?:\\n|.)*)\\nAuthor\\(s\\): (.*)\\nReview by: (.*)\\nSource: (.*)\\n", groups,
                        &groups_len)) {
-            strcpy(title, groups[1]);
-            strcpy(authors, groups[3]);
-            strcpy(source, groups[4]);
-        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nAuthor\\(s\\): (.*)\\nSource: (.*)\\n", groups, &groups_len)) {
-            strcpy(title, groups[1]);
+            strcpy(result->title, groups[0]);
             strcpy(authors, groups[2]);
             strcpy(source, groups[3]);
-        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nReview by: (.*)\\nSource: (.*)\\n", groups, &groups_len)) {
-            strcpy(title, groups[1]);
-            strcpy(authors, groups[2]);
-            strcpy(source, groups[3]);
-        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nSource: (.*)\\n", groups, &groups_len)) {
-            strcpy(title, groups[1]);;
+        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nAuthor\\(s\\): (.*)\\nSource: (.*)\\n", groups,
+                              &groups_len)) {
+            strcpy(result->title, groups[0]);
+            strcpy(authors, groups[1]);
             strcpy(source, groups[2]);
+        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nReview by: (.*)\\nSource: (.*)\\n", groups, &groups_len)) {
+            strcpy(result->title, groups[0]);
+            strcpy(authors, groups[1]);
+            strcpy(source, groups[2]);
+        } else if (extract_jt(text_start, "((?:\\n|.)*)\\nSource: (.*)\\n", groups, &groups_len)) {
+            strcpy(result->title, groups[0]);;
+            strcpy(source, groups[1]);
         }
     }
 
-    printf("title: %s\nauthors: %s\nsource: %s\n", title, authors, source);
-
-    strcpy(result->title, title);
-
-    strcpy(result->container, container_title);
-
-   if (*authors) {
+    if (*authors) {
         uint8_t *s = authors;
         uint8_t *e;
         while (1) {
@@ -2283,13 +2224,6 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
         }
     }
 
-    uint8_t journal[1024] = {0};
-    uint8_t volume[256] = {0};
-    uint8_t issue[256] = {0};
-    uint8_t year[5] = {0};
-    uint8_t month[4] = {0};
-    uint8_t pages[128] = {0};
-
 
     uint8_t *vol;
     uint8_t *no;
@@ -2299,8 +2233,8 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
 
     if (vol) {
         uint8_t *c = vol + 7;
-        uint8_t *v = volume;
-        while (*c >= '0' && *c <= '9' && v - volume < 10) {
+        uint8_t *v = result->volume;
+        while (*c >= '0' && *c <= '9' && v - result->volume < 10) {
             *v++ = *c++;
         }
 
@@ -2308,60 +2242,82 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
             memcpy(result->container, source, vol - source);
             result->container[vol - source] = 0;
         }
-
-        strcpy(result->volume, volume);
     }
 
     no = strstr(source, ", No. ");
 
     if (no) {
         uint8_t *c = no + 6;
-        uint8_t *v = issue;
-        while (*c >= '0' && *c <= '9' && v - issue < 10) {
+        uint8_t *v = result->issue;
+        while (*c >= '0' && *c <= '9' && v - result->issue < 10) {
             *v++ = *c++;
         }
 
-        strcpy(result->issue, issue);
-
-        if (*c != 0 && *(c + 1) == '(' && *(c + 12) == ')') {
-            memcpy(month, c + 2, 3);
-            memcpy(result->year, c + 8, 4);
-            printf("FOUND DATE: %s\n", c);
-        }
-
-        if (!*journal) {
-            if (vol - source < sizeof(result->container) - 1) {
-                memcpy(result->container, source, vol - source);
-                result->container[vol - source] = 0;
+        if (!*result->container) {
+            if (no - source < sizeof(result->container) - 1) {
+                memcpy(result->container, source, no - source);
+                result->container[no - source] = 0;
             }
         }
     }
 
 
+    uint8_t *c = source;
+    int32_t source_len = strlen(source);
+
+    while (c - source < source_len - 4) {
+        if (
+                c[0] >= '0' && c[0] <= '9' &&
+                c[1] >= '0' && c[1] <= '9' &&
+                c[2] >= '0' && c[2] <= '9' &&
+                c[3] >= '0' && c[3] <= '9' &&
+                c[4] == ')') {
+            memcpy(result->year, c, 4);
+            break;
+        }
+        c++;
+    }
+
     pg = strstr(source, ", p. ");
-    if (!pg) {
+    if (pg) {
+        pg += 5;
+    } else {
         pg = strstr(source, ", pp. ");
+        if (pg) {
+            pg += 6;
+        }
     }
 
     if (pg) {
-        strcpy(result->pages, pg + 6);
-
+        strcpy(result->pages, pg);
     }
 
 
-    printf("journal: %s\n", result->container);
-    printf("volume: %s\n", volume);
-    printf("issue: %s\n", issue);
-    printf("year: %s\n", year);
-    printf("month: %s\n", month);
-    printf("pages: %s\n", pages);
-    printf("container-title: %s\n", container_title);
+    if (*published_by) {
+        uint32_t len = strlen(published_by);
+        uint8_t *c = published_by + len - 1;
 
+        while (*c <= 64 && c >= published_by) {
+            c--;
+        }
 
-    printf("JSTOR: %s\n", text);
+        if (c > published_by) {
+            memcpy(result->publisher, published_by, c - published_by + 1);
+        }
 
+        c = published_by + len - 5;
+        if (
+                c[0] >= '0' && c[0] <= '9' &&
+                c[1] >= '0' && c[1] <= '9' &&
+                c[2] >= '0' && c[2] <= '9' &&
+                c[3] >= '0' && c[3] <= '9' &&
+                c[4] == ')') {
+            memcpy(result->year, c, 4);
+        }
+    }
+
+    return 1;
 }
-
 
 uint32_t recognize2(json_t *body, res_metadata_t *result) {
     memset(result, 0, sizeof(res_metadata_t));
@@ -2371,11 +2327,7 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     json_t *json_metadata = json_object_get(body, "metadata");
     json_t *json_total_pages = json_object_get(body, "totalPages");
 
-    uint8_t *total_pages_str = json_string_value(json_total_pages);
-    uint32_t total_pages = 0;
-    if (total_pages_str) {
-        total_pages = atoi(total_pages_str);
-    }
+    uint32_t total_pages = json_integer_value(json_total_pages);
 
     pdf_metadata_t pdf_metadata = {0};
 
@@ -2431,7 +2383,7 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     }
 
 
-    extract_jstor2(&doc->pages[0], result);
+    if (extract_jstor2(&doc->pages[0], result)) return 1;
 
     uint32_t injected_pages = 0;
 
@@ -2492,10 +2444,12 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     }
 
 
-    if (first >= 2) {
-        sprintf(result->pages, "%d-%d", first, last);
-    } else {
-        sprintf(result->pages, "%d", total_pages);
+    if (!*result->pages) {
+        if (first >= 2) {
+            sprintf(result->pages, "%d-%d", first, last);
+        } else {
+            sprintf(result->pages, "%d", total_pages);
+        }
     }
 
 
@@ -2618,16 +2572,6 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
         printf("TXT: %s\n", text);
     }
-
-
-    if (!*result->doi) {
-        uint8_t jstor_doi[1024];
-        if (extract_jstor(output_text11, jstor_doi)) {
-            printf("found jstor_doi in text: %s\n", jstor_doi);
-            strcpy(result->doi, jstor_doi);
-        }
-    }
-
 
     return 0;
 }
