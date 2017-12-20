@@ -130,8 +130,8 @@ doc_t *get_doc(json_t *body) {
         json_t *width = json_array_get(json_obj, 0);
         json_t *height = json_array_get(json_obj, 1);
 
-        page->width =json_real_value(width);
-        page->height = json_real_value(height);
+        page->width =json_number_value(width);
+        page->height = json_number_value(height);
 
         json_t *json_flows = json_array_get(json_obj, 2);
         if (!json_is_array(json_flows)) return 0;
@@ -157,14 +157,14 @@ doc_t *get_doc(json_t *body) {
 
 
                 json_t *xMin = json_array_get(json_obj, 0);
-                json_t *xMax = json_array_get(json_obj, 1);
-                json_t *yMin = json_array_get(json_obj, 2);
+                json_t *yMin = json_array_get(json_obj, 1);
+                json_t *xMax = json_array_get(json_obj, 2);
                 json_t *yMax = json_array_get(json_obj, 3);
 
-                block->xMin = json_real_value(xMin);
-                block->xMax = json_real_value(xMax);
-                block->yMin = json_real_value(yMin);
-                block->yMax = json_real_value(yMax);
+                block->xMin = json_number_value(xMin);
+                block->xMax = json_number_value(xMax);
+                block->yMin = json_number_value(yMin);
+                block->yMax = json_number_value(yMax);
 
                 json_t *json_lines = json_array_get(json_obj, 4);
                 if (!json_is_array(json_lines)) return 0;
@@ -200,13 +200,13 @@ doc_t *get_doc(json_t *body) {
                         json_t *text = json_array_get(json_obj, 13);
 
 
-                        word->xMin = json_real_value(xMin);
-                        word->xMax = json_real_value(xMax);
-                        word->yMin = json_real_value(yMin);
-                        word->yMax = json_real_value(yMax);
-                        word->font_size = json_real_value(fontSize);
+                        word->xMin = json_number_value(xMin);
+                        word->xMax = json_number_value(xMax);
+                        word->yMin = json_number_value(yMin);
+                        word->yMax = json_number_value(yMax);
+                        word->font_size = json_number_value(fontSize);
                         word->space_after = json_integer_value(spaceAfter);
-                        word->baseline = json_real_value(baseline);
+                        word->baseline = json_number_value(baseline);
                         word->rotation = json_integer_value(rotation);
                         word->underlined = json_integer_value(rotation);
                         word->bold = json_integer_value(bold);
