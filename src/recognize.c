@@ -943,7 +943,7 @@ int extract_doi(uint8_t *text, uint8_t *doi, uint32_t doi_max_len) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "10.\\d{4,9}\\/[-._;()\\/:A-Za-z0-9]+";
@@ -987,7 +987,7 @@ int extract_isbn(uint8_t *text, uint8_t *isbn) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "(SBN|sbn)[ \\u2014\\u2013\\u2012-]?(10|13)?[: ]*([0-9X][0-9X \\u2014\\u2013\\u2012-]+)";
@@ -1039,7 +1039,7 @@ int extract_arxiv(uint8_t *text, uint8_t *arxiv) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "arXiv:([a-z+-]+\\/[a-zA-Z0-9]+)";
@@ -1545,7 +1545,7 @@ int extract_year(uint8_t *text) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "(^|\\(|\\s)([0-9]{4})(\\)|\\s|$)";
@@ -1597,7 +1597,7 @@ int extract_volume(uint8_t *text) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "\\b(?i:volume|vol|v)\\.?[\\s:-]\\s*(\\d+)";
@@ -1653,7 +1653,7 @@ int extract_issue(uint8_t *text) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "\\b(?i:issue|num|no|number|n)\\.?[\\s:-]\\s*(\\d+)";
@@ -1816,7 +1816,7 @@ int extract_issn(uint8_t *text, uint8_t *issn) {
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "ISSN:?\\s*(\\d{4}[-]\\d{3}[\\dX])";
@@ -1946,7 +1946,7 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     const char regText[] = "([\\p{Alphabetic}'.]+\\s)*[\\p{Alphabetic}'.]+";
