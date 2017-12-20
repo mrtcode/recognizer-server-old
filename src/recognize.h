@@ -19,6 +19,7 @@ typedef struct res_metadata {
     uint8_t volume[32];
     uint8_t issue[32];
     uint8_t issn[32];
+    uint8_t url[2048];
 } res_metadata_t;
 
 typedef struct pdf_metadata {

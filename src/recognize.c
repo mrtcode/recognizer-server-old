@@ -2020,7 +2020,7 @@ int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
 
-    ucnv_toUChars(conv, uc, text_len, text, text_len, &errorCode);
+    ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
     UErrorCode uStatus = U_ZERO_ERROR;
@@ -2028,8 +2028,7 @@ int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t
     regEx = uregex_openC(regText, 0, NULL, &uStatus);
     uregex_setText(regEx, uc, -1, &uStatus);
 
-
-    if (uregex_findNext(regEx, &uStatus)) {
+    if (uregex_find(regEx, 0, &uStatus)) {
         *groups_len = uregex_groupCount(regEx, &uStatus);
 
         for (uint32_t i = 1; i < *groups_len + 1; i++) {
@@ -2080,7 +2079,7 @@ int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max
                     }
                 }
 
-                if (*text_len + line_str_len > max_text_size - 1) return 0;
+                if (*text_len + line_str_len > max_text_size - 5) return 0;
                 memcpy(text + *text_len, line_str, line_str_len);
                 (*text_len) += line_str_len;
 
@@ -2128,14 +2127,15 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
     if (!text_start) text_start = text;
 
 
-    printf("BLOCK TEXT: %s", text_start);
+    printf("BLOCK TEXT: %s\n", text_start);
 
-    uint8_t groups[10][2048] = {0};
+    uint8_t groups[5][2048] = {0};
     uint32_t groups_len = 0;
 
-    if (extract_jt(text, "Stable URL: http:\\/\\/www.\\jstor\\.org\\/stable\\/(\\S+)", groups,
+    if (extract_jt(text, "Stable URL: (http:\\/\\/www.\\jstor\\.org\\/stable\\/(\\S+))", groups,
                    &groups_len)) {
-        sprintf(result->doi, "10.2307/%s", groups[0]);
+        strcpy(result->url, groups[0]);
+        sprintf(result->doi, "10.2307/%s", groups[1]);
     } else {
         return 0;
     }
@@ -2224,7 +2224,6 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
         }
     }
 
-
     uint8_t *vol;
     uint8_t *no;
     uint8_t *pg;
@@ -2292,7 +2291,6 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
         strcpy(result->pages, pg);
     }
 
-
     if (*published_by) {
         uint32_t len = strlen(published_by);
         uint8_t *c = published_by + len - 1;
@@ -2326,6 +2324,8 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
     json_t *json_metadata = json_object_get(body, "metadata");
     json_t *json_total_pages = json_object_get(body, "totalPages");
+
+    if(!json_metadata || !json_total_pages) return 0;
 
     uint32_t total_pages = json_integer_value(json_total_pages);
 

@@ -163,6 +163,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
         if(*result.volume!=0) json_object_set(obj, "volume", json_string(result.volume));
         if(*result.issue!=0) json_object_set(obj, "issue", json_string(result.issue));
         if(*result.issn!=0) json_object_set(obj, "issn", json_string(result.issue));
+        if(*result.url!=0) json_object_set(obj, "url", json_string(result.url));
 //    }
 
     printf("type: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\npublisher: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
