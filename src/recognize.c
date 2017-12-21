@@ -34,6 +34,7 @@
 #include <unicode/ustring.h>
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
+#include "defines.h"
 #include "ht.h"
 #include "db.h"
 #include "text.h"
@@ -58,7 +59,7 @@ typedef struct word {
     double xMax;
     double yMin;
     double yMax;
-    uint8_t space_after;
+    uint8_t space;
     double font_size;
     double baseline;
     uint8_t rotation;
@@ -82,7 +83,6 @@ typedef struct line {
 
 typedef struct block {
     uint8_t alignment;
-    uint32_t font_size;
     line_t *lines;
     uint32_t lines_len;
     double xMin;
@@ -205,7 +205,7 @@ doc_t *get_doc(json_t *body) {
                         word->yMin = json_number_value(yMin);
                         word->yMax = json_number_value(yMax);
                         word->font_size = json_number_value(fontSize);
-                        word->space_after = json_integer_value(spaceAfter);
+                        word->space = json_integer_value(spaceAfter);
                         word->baseline = json_number_value(baseline);
                         word->rotation = json_integer_value(rotation);
                         word->underlined = json_integer_value(rotation);
@@ -364,7 +364,7 @@ void print_block(block_t *block) {
         for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
             word_t *word = line->words + word_i;
             printf("%s", word->text);
-            if (word->space_after) printf(" ");
+            if (word->space) printf(" ");
         }
     }
 }
@@ -386,7 +386,7 @@ int block_to_text(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t ma
             memcpy(text + *text_len, word->text, word->text_len);
             (*text_len) += word->text_len;
 
-            if (word->space_after) {
+            if (word->space) {
                 *(text + *text_len) = ' ';
                 (*text_len)++;
             }
@@ -429,7 +429,7 @@ int doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text
                         memcpy(text + *text_len, word->text, word->text_len);
                         (*text_len) += word->text_len;
 
-                        if (word->space_after) {
+                        if (word->space) {
                             *(text + *text_len) = ' ';
                             (*text_len)++;
                         }
@@ -450,8 +450,8 @@ int doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text
     return 1;
 }
 
-
 typedef struct font {
+    uint32_t font_id;
     double font_size;
     uint32_t count;
 } font_t;
@@ -461,10 +461,10 @@ typedef struct fonts_info {
     uint32_t fonts_len;
 } fonts_info_t;
 
-void increment_font(fonts_info_t *fonts_info, double font_size, uint32_t value) {
+void increment_font(fonts_info_t *fonts_info, uint32_t font_id, double font_size, uint32_t value) {
     for (uint32_t i = 0; i < fonts_info->fonts_len; i++) {
         font_t *font = &fonts_info->fonts[i];
-        if (fabs(font->font_size - font_size) < 1.0) {
+        if (font->font_id == font_id && font->font_size == font_size) {
             font->count += value;
             return;
         }
@@ -478,6 +478,7 @@ void increment_font(fonts_info_t *fonts_info, double font_size, uint32_t value) 
         fonts_info->fonts = (font_t *) realloc(fonts_info->fonts, sizeof(font_t) * fonts_info->fonts_len);
     }
 
+    fonts_info->fonts[fonts_info->fonts_len - 1].font_id = font_id;
     fonts_info->fonts[fonts_info->fonts_len - 1].font_size = font_size;
     fonts_info->fonts[fonts_info->fonts_len - 1].count = value;
 }
@@ -501,7 +502,7 @@ int init_fonts_info(fonts_info_t *fonts_info, doc_t *doc) {
                     for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                         word_t *word = line->words + word_i;
 
-                        increment_font(fonts_info, word->font_size, word->text_len);
+                        increment_font(fonts_info, word->font, word->font_size, word->text_len);
                     }
                 }
             }
@@ -571,7 +572,7 @@ int line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
 
         } while (1);
 
-        if (word->space_after) {
+        if (word->space) {
             uchars[*uchars_len].word = word;
             uchars[*uchars_len].c = ' ';
             (*uchars_len)++;
@@ -885,7 +886,7 @@ int process_metadata(json_t *json_metadata, pdf_metadata_t *pdf_metadata) {
         if (json_is_string(value)) {
             if (!strcmp(key, "Title")) {
                 uint8_t *title = json_string_value(value);
-                if (title) {
+                if (title && strlen(title)<=TITLE_LEN) {
                     strcpy(pdf_metadata->title, title);
                     return 1;
                 }
@@ -895,8 +896,7 @@ int process_metadata(json_t *json_metadata, pdf_metadata_t *pdf_metadata) {
     return 0;
 }
 
-int get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t processed_text_len,
-                     uint8_t *doi, uint32_t doi_max_len) {
+int get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t processed_text_len, uint8_t *doi) {
     uint8_t output_text[MAX_LOOKUP_TEXT_LEN];
     uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
     text_process(title, output_text, &output_text_len, 0, 0);
@@ -920,7 +920,7 @@ int get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t processed
             int res1 = find_author(processed_text, processed_text_len, slot->a1_hash, slot->a1_len);
             int res2 = find_author(processed_text, processed_text_len, slot->a2_hash, slot->a2_len);
             printf("author found: %d %d\n", res1, res2);
-            int res = db_get_doi(slot->doi_id, doi, doi_max_len);
+            int res = db_get_doi(slot->doi_id, doi);
             if (res) {
                 return 1;
             }
@@ -930,7 +930,7 @@ int get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t processed
     return 0;
 }
 
-int extract_doi(uint8_t *text, uint8_t *doi, uint32_t doi_max_len) {
+int extract_doi(uint8_t *text, uint8_t *doi) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -960,7 +960,7 @@ int extract_doi(uint8_t *text, uint8_t *doi, uint32_t doi_max_len) {
         int32_t end = uregex_end(regEx, 0, &uStatus);
 
         if (end - start > max_len) {
-            ucnv_fromUChars(conv, doi, target_len, uc + start, end - start, &uStatus);
+            ucnv_fromUChars(conv, doi, DOI_LEN, uc + start, end - start, &uStatus);
             max_len = end - start;
         }
 
@@ -1082,18 +1082,17 @@ int is_first_page_missing_fonts(doc_t *doc) {
                 for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                     word_t *word = line->words + word_i;
 
-                    uint64_t font1 = word->font;
 
                     uint8_t found = 0;
                     for (uint32_t i = 0; i < fonts_len; i++) {
-                        if (fonts[i] == font1) {
+                        if (fonts[i] == word->font) {
                             found = 1;
                             break;
                         }
                     }
 
                     if (!found) {
-                        fonts[fonts_len++] = font1;
+                        fonts[fonts_len++] = word->font;
                     }
                 }
             }
@@ -1119,18 +1118,16 @@ int is_first_page_missing_fonts(doc_t *doc) {
                     for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                         word_t *word = line->words + word_i;
 
-                        uint64_t font1 = word->font;
-
                         uint8_t found = 0;
                         for (uint32_t i = 0; i < fonts2_len; i++) {
-                            if (fonts2[i] == font1) {
+                            if (fonts2[i] == word->font) {
                                 found = 1;
                                 break;
                             }
                         }
 
                         if (!found) {
-                            fonts2[fonts2_len++] = font1;
+                            fonts2[fonts2_len++] = word->font;
                         }
                     }
                 }
@@ -1307,12 +1304,12 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
                             }
                         } while (1);
 
-                        if (word->space_after) {
+                        if (word->space) {
                             if (start_skip) {
                                 start_skip--;
                             } else {
                                 if (finish) {
-                                    if (word->space_after) {
+                                    if (word->space) {
                                         abstract[abstract_len++] = ' ';
                                         abstract[abstract_len] = 0;
                                     }
@@ -1505,7 +1502,7 @@ int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstra
                             }
                         } while (1);
 
-                        if (word->space_after) {
+                        if (word->space) {
                             abstract[abstract_len++] = ' ';
                         }
 
@@ -1532,7 +1529,7 @@ int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstra
 }
 
 
-int extract_year(uint8_t *text) {
+int extract_year(uint8_t *text, uint8_t *year) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -1563,28 +1560,28 @@ int extract_year(uint8_t *text) {
         int32_t start = uregex_start(regEx, 2, &uStatus);
         int32_t end = uregex_end(regEx, 2, &uStatus);
 
-        uint8_t year[5];
+        uint8_t year_str[5];
         int k = 0;
         for (uint32_t i = start; i <= end && k < 4; i++, k++) {
-            year[k] = uc[i];
+            year_str[k] = uc[i];
         }
 
-        uint32_t year_nr = atoi(year);
+        uint32_t year_nr = atoi(year_str);
 
-        if (year_nr >= 1950 && year_nr <= 2018) {
-            return year_nr;
+        if (year_nr >= 1800 && year_nr <= 2018) {
+            strcpy(year, year_str);
+            ret = 1;
         }
-
     }
 
     uregex_close(regEx);
 
     free(uc);
 
-    return 0;
+    return ret;
 }
 
-int extract_volume(uint8_t *text) {
+int extract_volume(uint8_t *text, uint8_t *volume) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -1608,26 +1605,13 @@ int extract_volume(uint8_t *text) {
     uregex_setText(regEx, uc, -1, &uStatus);
     isMatch = uregex_find(regEx, 0, &uStatus);
 
-    uint8_t tmp[32] = {0};
-    uint32_t tmp_i = 0;
-
     if (isMatch) {
         int32_t start = uregex_start(regEx, 1, &uStatus);
         int32_t end = uregex_end(regEx, 1, &uStatus);
 
-        uint8_t year[5] = {0};
-        int k = 0;
-        for (uint32_t i = start; i < end && k < 4; i++, k++) {
-            year[k] = uc[i];
+        if(end-start<=4) {
+            ucnv_fromUChars(conv, volume, VOLUME_LEN, uc + start, end - start, &uStatus);
         }
-
-        uint32_t year_nr = atoi(year);
-
-//        if(year_nr>=1950 && year_nr<=2018) {
-//            return year_nr;
-//        }
-
-        return year_nr;
 
         ret = 1;
     }
@@ -1639,8 +1623,7 @@ int extract_volume(uint8_t *text) {
     return ret;
 }
 
-
-int extract_issue(uint8_t *text) {
+int extract_issue(uint8_t *text, uint8_t *issue) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -1671,19 +1654,9 @@ int extract_issue(uint8_t *text) {
         int32_t start = uregex_start(regEx, 1, &uStatus);
         int32_t end = uregex_end(regEx, 1, &uStatus);
 
-        uint8_t year[5] = {0};
-        int k = 0;
-        for (uint32_t i = start; i < end && k < 4; i++, k++) {
-            year[k] = uc[i];
+        if(end-start<=4) {
+            ucnv_fromUChars(conv, issue, ISSUE_LEN, uc + start, end - start, &uStatus);
         }
-
-        uint32_t year_nr = atoi(year);
-
-//        if(year_nr>=1950 && year_nr<=2018) {
-//            return year_nr;
-//        }
-
-        return year_nr;
 
         ret = 1;
     }
@@ -1859,7 +1832,7 @@ int get_block_text(block_t *block, uint8_t *text) {
             memcpy(text + text_len, word->text, word->text_len);
             (text_len) += word->text_len;
 
-            if (word->space_after) {
+            if (word->space) {
                 *(text + text_len) = ' ';
                 (text_len)++;
             }
@@ -1926,15 +1899,15 @@ int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
     return 0;
 }
 
-int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t *issue, uint32_t *year) {
+int extract_from_headfoot(doc_t *doc, uint8_t *name, uint8_t *volume, uint8_t *issue, uint8_t *year) {
     uint8_t text[10000] = {0};
     extract_header_footer(doc, text, sizeof(text));
 
     printf("HEADFOOT: %s\n", text);
 
-    *volume = extract_volume(text);
-    *issue = extract_issue(text);
-    *year = extract_year(text);
+    extract_volume(text, volume);
+    extract_issue(text, issue);
+    extract_year(text, year);
 
     UErrorCode errorCode = U_ZERO_ERROR;
     int32_t target_len;
@@ -1945,7 +1918,6 @@ int extract_from_headfoot(doc_t *doc, uint8_t *name, uint32_t *volume, uint32_t 
 
     target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
     UChar *uc = malloc(target_len);
-
     ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
@@ -2073,7 +2045,7 @@ int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max
                     memcpy(line_str + line_str_len, word->text, word->text_len);
                     (line_str_len) += word->text_len;
 
-                    if (word->space_after) {
+                    if (word->space) {
                         *(line_str + line_str_len) = ' ';
                         (line_str_len)++;
                     }
@@ -2317,7 +2289,7 @@ int extract_jstor2(page_t *page, res_metadata_t *result) {
     return 1;
 }
 
-uint32_t recognize2(json_t *body, res_metadata_t *result) {
+uint32_t recognize(json_t *body, res_metadata_t *result) {
     memset(result, 0, sizeof(res_metadata_t));
 
     strcpy(result->type, "journal-article");
@@ -2345,37 +2317,22 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
 
     print_fonts_info(&fonts_info);
 
-    uint8_t output_text11[MAX_LOOKUP_TEXT_LEN];
-    uint32_t output_text_len11 = MAX_LOOKUP_TEXT_LEN;
+    uint8_t text[MAX_LOOKUP_TEXT_LEN];
+    uint32_t text_len = MAX_LOOKUP_TEXT_LEN;
+    uint8_t processed_text[MAX_LOOKUP_TEXT_LEN];
+    uint32_t processed_text_len = MAX_LOOKUP_TEXT_LEN;
 
-    doc_to_text(doc, output_text11, &output_text_len11, MAX_LOOKUP_TEXT_LEN - 1);
+    doc_to_text(doc, text, &text_len, MAX_LOOKUP_TEXT_LEN - 1);
+    text_process(text, processed_text, &processed_text_len, 0, 0);
 
-//    printf("%s", output_text11);
-
-    uint8_t doi[1024];
-    if (extract_doi(output_text11, doi, 1024)) {
-        strcpy(result->doi, doi);
-    }
-
-    uint8_t isbn[14];
-    if (extract_isbn(output_text11, isbn)) {
-        strcpy(result->isbn, isbn);
-    }
-
-    uint8_t arxiv[256];
-    if (extract_arxiv(output_text11, arxiv)) {
-        strcpy(result->arxiv, arxiv);
-    }
-
-
-    uint8_t output_text22[MAX_LOOKUP_TEXT_LEN];
-    uint32_t output_text_len22 = MAX_LOOKUP_TEXT_LEN;
-    text_process(output_text11, output_text22, &output_text_len22, 0, 0);
+    extract_doi(text, result->doi);
+    extract_isbn(text, result->isbn);
+    extract_arxiv(text, result->arxiv);
 
     if (!*result->doi) {
         if (strlen(pdf_metadata.title)) {
             printf("has title: %s\n", pdf_metadata.title);
-            if (get_doi_by_title(pdf_metadata.title, output_text22, output_text_len22, result->doi, 500)) {
+            if (get_doi_by_title(pdf_metadata.title, processed_text, processed_text_len, result->doi)) {
                 printf("title detected: %s\n%s\n", pdf_metadata.title, result->doi);
                 strcpy(result->title, pdf_metadata.title);
             }
@@ -2452,47 +2409,12 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
         }
     }
 
-
     if (start < doc->pages_len) {
         page = &doc->pages[start];
     }
 
-
-    uint8_t journal_name[1024] = {0};
-    uint32_t year = 0;
-
-    uint32_t volume = 0;
-    uint32_t issue = 0;
-
-    extract_from_headfoot(doc, journal_name, &volume, &issue, &year);
-
-    if (volume) {
-        sprintf(result->volume, "%d", volume);
-    }
-
-    if (issue) {
-        sprintf(result->issue, "%d", issue);
-    }
-
-    printf("JOURNAL NAME: %s\n", journal_name);
-
-    if (*journal_name) {
-        strcpy(result->container, journal_name);
-    }
-
-    if (year) {
-        sprintf(result->year, "%d", year);
-    }
-
-
-    uint8_t issn[32] = {0};
-    extract_issn(output_text11, issn);
-
-    if (*issn) {
-        strcpy(result->issn, issn);
-    }
-    printf("ISSN: %s\n", issn);
-
+    extract_from_headfoot(doc, result->container, result->volume, result->issue, result->year);
+    extract_issn(text, result->issn);
 
     uint8_t *c = &result->abstract[strlen(result->abstract) - 1];
 
@@ -2509,7 +2431,6 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
         *result->abstract = 0;
     }
 
-
     grouped_blocks_t grouped_blocks[1000];
     uint32_t grouped_blocks_len = 0;
     get_groups(page, grouped_blocks, &grouped_blocks_len);
@@ -2525,52 +2446,46 @@ uint32_t recognize2(json_t *body, res_metadata_t *result) {
     }
 
     double title_font_size = 0;
-    uint8_t title[1024];
-    double title_yMax = 0;
 
     for (uint32_t i = 0; i < grouped_blocks_len; i++) {
         grouped_blocks_t *gb = &grouped_blocks[i];
 
         if (gb->max_font_size <= main_font->font_size && !gb->upper) continue;
 
-
-        uint8_t text[1024] = {0};
-        uint32_t text_len = 0;
+        uint8_t title[1024] = {0};
+        uint32_t title_len = 0;
         for (uint32_t k = 0; k < gb->blocks_len; k++) {
             printf("\nB%d: %s\n", k, gb->blocks[k]->lines[0].words[0].text);
-            if (text_len >= 500) break;
-            uint32_t block_text_len;
-            block_to_text(gb->blocks[k], text + text_len, &block_text_len, 500 - text_len);
-            text_len += block_text_len;
-            text[text_len++] = ' ';
-            text[text_len] = 0;
+            if (title_len >= 500) break;
+            uint32_t block_title_len;
+            block_to_text(gb->blocks[k], title + title_len, &block_title_len, 500 - title_len);
+            title_len += block_title_len;
+            title[title_len++] = ' ';
+            title[title_len] = 0;
         }
 
-
-        // Mesure characters count instead of byte len
-        if (text_len < 25 || text_len > 400) continue;
+        // Measure characters count instead of byte len
+        if (title_len < 25 || title_len > 400) continue;
 
         if (!*result->doi) {
-            if (get_doi_by_title(text, output_text22, output_text_len22, result->doi, 500)) {
-
-            }
+            get_doi_by_title(title, processed_text, processed_text_len, result->doi);
         }
 
-        if (get_alphabetic_percent(text) < 70) continue;
+        if (get_alphabetic_percent(title) < 70) continue;
 
         uint8_t authors[10000] = {0};
         get_authors(gb->yMax, page, authors);
         printf("au: %s\n", authors);
 
-        if (text_len >= 20 && title_font_size < gb->max_font_size && strlen(authors)) {
-            strcpy(result->title, text);
+        if (title_len >= 20 && title_font_size < gb->max_font_size && strlen(authors)) {
+            strcpy(result->title, title);
             strcpy(result->authors, authors);
-            printf("TITLE: %s\n", text);
+            printf("TITLE: %s\n", title);
             printf("AUTHORS: %s\n", authors);
             title_font_size = gb->max_font_size;
         }
 
-        printf("TXT: %s\n", text);
+        printf("TXT: %s\n", title);
     }
 
     return 0;

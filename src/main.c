@@ -138,7 +138,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     pthread_rwlock_rdlock(&data_rwlock);
 
     gettimeofday(&st, NULL);
-    rc = recognize2(json_body, &result);
+    rc = recognize(json_body, &result);
     gettimeofday(&et, NULL);
 
     pthread_rwlock_unlock(&data_rwlock);

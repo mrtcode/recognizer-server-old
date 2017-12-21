@@ -26,10 +26,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include "defines.h"
+#include "log.h"
 #include "ht.h"
 #include "db.h"
 #include "text.h"
-#include "log.h"
+
 
 extern uint8_t indexing_mode;
 
@@ -150,7 +152,7 @@ uint32_t db_dois_id_last() {
     return doi_id;
 }
 
-uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi, uint32_t doi_max_len) {
+uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi) {
     int rc;
     char *sql;
     sqlite3_stmt *stmt = NULL;
@@ -170,7 +172,7 @@ uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi, uint32_t doi_max_len) {
 
     if ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
         uint8_t *str = sqlite3_column_text(stmt, 0);
-        if(strlen(str)<doi_max_len) {
+        if(strlen(str)<=DOI_LEN) {
             strcpy(doi, str);
             ret = 1;
         }

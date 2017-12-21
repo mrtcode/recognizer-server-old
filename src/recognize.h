@@ -1,35 +1,33 @@
 #ifndef RECOGNIZER_SERVER_RECOGNIZE_H
 #define RECOGNIZER_SERVER_RECOGNIZE_H
 
-#define MAX_LOOKUP_TEXT_LEN 10000
-#define MAX_IDENTIFIERS 20
+#include "defines.h"
 
 typedef struct res_metadata {
-    uint8_t type[128];
-    uint8_t title[MAX_TITLE_LEN + 1];
-    uint8_t authors[MAX_AUTHORS_LEN + 1];
-    uint8_t doi[1024];
-    uint8_t isbn[14];
-    uint8_t arxiv[256];
-    uint8_t abstract[10000];
-    uint8_t container[512];
-    uint8_t publisher[512];
-    uint8_t year[5];
-    uint8_t pages[32];
-    uint8_t volume[32];
-    uint8_t issue[32];
-    uint8_t issn[32];
-    uint8_t url[2048];
+    uint8_t type[TYPE_LEN];
+    uint8_t title[TITLE_LEN + 1];
+    uint8_t authors[AUTHORS_LEN + 1];
+    uint8_t doi[DOI_LEN+1];
+    uint8_t isbn[ISBN_LEN+1];
+    uint8_t arxiv[ARXIV_LEN+1];
+    uint8_t abstract[ABSTRACT_LEN+1];
+    uint8_t container[CONTAINER_LEN+1];
+    uint8_t publisher[PUBLISHER_LEN+1];
+    uint8_t year[YEAR_LEN+1];
+    uint8_t pages[PAGES_LEN+1];
+    uint8_t volume[VOLUME_LEN+1];
+    uint8_t issue[ISSUE_LEN+1];
+    uint8_t issn[ISSN_LEN+1];
+    uint8_t url[URL_LEN+1];
 } res_metadata_t;
 
 typedef struct pdf_metadata {
-    uint8_t title[1024];
-    uint8_t doi[1024];
-    uint8_t authors[32768];
+    uint8_t title[TITLE_LEN];
+    uint8_t doi[DOI_LEN];
+    uint8_t authors[AUTHORS_LEN];
 } pdf_metadata_t;
 
-uint32_t recognize(uint8_t *hash, uint8_t *text, res_metadata_t *result);
-uint32_t recognize2(json_t *body, res_metadata_t *result);
-int test_authors();
+uint32_t recognize(json_t *body, res_metadata_t *result);
+
 
 #endif //RECOGNIZER_SERVER_RECOGNIZE_H
