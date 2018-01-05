@@ -1,0 +1,18 @@
+
+#define MAX_LOOKUP_TEXT_LEN 10000
+#define MAX_IDENTIFIERS 20
+#define TYPE_LEN 64
+#define TITLE_LEN 1024
+#define AUTHORS_LEN 1024
+#define ABSTRACT_LEN 8192
+#define DOI_LEN 512
+#define ISBN_LEN 13
+#define ARXIV_LEN 15
+#define CONTAINER_LEN 512
+#define PUBLISHER_LEN 512
+#define PAGES_LEN 32
+#define VOLUME_LEN 4
+#define ISSUE_LEN 4
+#define YEAR_LEN 4
+#define ISSN_LEN 9
+#define URL_LEN 1024

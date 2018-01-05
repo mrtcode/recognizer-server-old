@@ -16,7 +16,7 @@ int db_normal_mode_init(char *directory);
 
 uint32_t db_dois_id_last();
 
-uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi);
+uint8_t db_get_doi(uint32_t doi_id, uint8_t *doi);
 
 int db_close();
 

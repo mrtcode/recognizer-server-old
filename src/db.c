@@ -152,7 +152,7 @@ uint32_t db_dois_id_last() {
     return doi_id;
 }
 
-uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi) {
+uint8_t db_get_doi(uint32_t doi_id, uint8_t *doi) {
     int rc;
     char *sql;
     sqlite3_stmt *stmt = NULL;
@@ -177,7 +177,6 @@ uint32_t db_get_doi(uint32_t doi_id, uint8_t *doi) {
             ret = 1;
         }
     }
-
 
     if ((rc = sqlite3_finalize(stmt)) != SQLITE_OK) {
         log_error("(%d): %s", rc, sqlite3_errmsg(sqlite_dois));

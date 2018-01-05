@@ -37,7 +37,6 @@
 #include "text.h"
 #include "index.h"
 #include "recognize.h"
-#include "rh.h"
 #include "log.h"
 #include "wordlist.h"
 #include "journal.h"
@@ -149,24 +148,25 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     json_object_set_new(obj, "time", json_integer(elapsed));
 //    if (0) {
-        if(*result.type!=0) json_object_set(obj, "type", json_string(result.type));
+        if(*result.type) json_object_set(obj, "type", json_string(result.type));
         json_object_set(obj, "title", json_string(result.title));
         json_object_set(obj, "authors", authors_to_json(result.authors));
-        if(*result.doi!=0) json_object_set(obj, "doi", json_string(result.doi));
-        if(*result.isbn!=0) json_object_set(obj, "isbn", json_string(result.isbn));
-        if(*result.arxiv!=0) json_object_set(obj, "arxiv", json_string(result.arxiv));
-        if(*result.abstract!=0) json_object_set(obj, "abstract", json_string(result.abstract));
-        if(*result.year!=0) json_object_set(obj, "year", json_string(result.year));
-        if(*result.container!=0) json_object_set(obj, "container", json_string(result.container));
-        if(*result.publisher!=0) json_object_set(obj, "publisher", json_string(result.publisher));
-        if(*result.pages!=0) json_object_set(obj, "pages", json_string(result.pages));
-        if(*result.volume!=0) json_object_set(obj, "volume", json_string(result.volume));
-        if(*result.issue!=0) json_object_set(obj, "issue", json_string(result.issue));
-        if(*result.issn!=0) json_object_set(obj, "issn", json_string(result.issue));
-        if(*result.url!=0) json_object_set(obj, "url", json_string(result.url));
+        if(*result.doi) json_object_set(obj, "doi", json_string(result.doi));
+        if(*result.isbn) json_object_set(obj, "isbn", json_string(result.isbn));
+        if(*result.arxiv) json_object_set(obj, "arxiv", json_string(result.arxiv));
+        if(*result.abstract) json_object_set(obj, "abstract", json_string(result.abstract));
+        if(*result.year) json_object_set(obj, "year", json_string(result.year));
+        if(*result.container) json_object_set(obj, "container", json_string(result.container));
+        if(*result.publisher) json_object_set(obj, "publisher", json_string(result.publisher));
+        if(*result.pages) json_object_set(obj, "pages", json_string(result.pages));
+        if(*result.volume) json_object_set(obj, "volume", json_string(result.volume));
+        if(*result.issue) json_object_set(obj, "issue", json_string(result.issue));
+        if(*result.issn) json_object_set(obj, "issn", json_string(result.issue));
+        if(*result.url) json_object_set(obj, "url", json_string(result.url));
 //    }
 
-    printf("type: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\npublisher: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
+    printf("\n\nus: %d\ntype: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\npublisher: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
+           elapsed,
            result.type,
            result.title,
            result.authors,
@@ -193,7 +193,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     return OCS_PROCESSED;
 }
 
-onion_connection_status url_index2(void *_, onion_request *req, onion_response *res) {
+onion_connection_status url_index(void *_, onion_request *req, onion_response *res) {
     if (onion_request_get_flags(req) & OR_POST) {
         struct timeval st, et;
 
@@ -392,8 +392,6 @@ UChar *touc(const char *text, int32_t text_len) {
     return uc1;
 }
 
-
-
 int main(int argc, char **argv) {
     char *opt_db_directory = 0;
     char *opt_port = 0;
@@ -421,28 +419,6 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-
-//    DIR *dir = opendir(opt_db_directory);
-//    if (!dir) {
-//        log_error("database directory is invalid");
-//        return EXIT_FAILURE;
-//    }
-//
-//    indexing_mode = 1;
-//
-//    uint32_t n = 0;
-//    while (readdir(dir)) {
-//        n++;
-//        if (n == 3) {
-//            indexing_mode = 0;
-//            break;
-//        }
-//    }
-//    closedir(dir);
-
-//    indexing_mode = 1;
-
-
     log_info("starting in normal mode");
 
 
@@ -455,42 +431,8 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-//    UNormalizer2 *unorm2;
-//
-//        UErrorCode status = U_ZERO_ERROR;
-//        unorm2 = unorm2_getNFKDInstance(&status);
-//        if (status != U_ZERO_ERROR) {
-//            log_error("unorm2_getNFKDInstance failed, error=%s", u_errorName(status));
-//            return 0;
-//        }
-//
-//
-//
-//    printf("alphabetic: %d %d\n",unorm2_composePair(unorm2, 97,778), u_charType(778));
-//
-//return 0;
-
     journal_init();
-
-//    uint8_t output_text[MAX_LOOKUP_TEXT_LEN];
-//    uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
-//    text_process("internationaljournalofengineeringandtechnology", output_text, &output_text_len, 0, 0);
-//
-//
-//    uint64_t title_hash = text_hash64(output_text, output_text_len);
-//
-//    uint8_t jj = journal_has(title_hash);
-//
-//    if(jj) {
-//        printf("found\n");
-//    }
-
-
-
     wordlist_init();
-
-    //test_authors();
-    //return 0;
 
     if (!db_normal_mode_init(opt_db_directory)) {
         log_error("failed to initialize db normal mode");
@@ -498,85 +440,12 @@ int main(int argc, char **argv) {
     }
 
 
-//    uint8_t txt[] = "aasdfasdfasdbgrt  https://doi.org/10.1007/BF01971386 werwe";
-//
-//    uint8_t doi[1024];
-//
-//
-//    extract_doi(txt, doi, 1000);
-//
-//    printf("doi: %s\n", doi);
-//
-//
-//    uint8_t txt[] = "aasdfasdfasdbgrt  ISBN 978-1-78328-731-4 werwe";
-//
-//    uint8_t doi[1024];
-//
-//
-//    extract_isbn(txt, doi);
-//
-//    printf("doi: %s\n", doi);
-
-
-//    UChar *uc = touc(txt, strlen(txt));
-//
-//    URegularExpression *regEx;
-//    const char regText[]="10(?:\\.[0-9]{4,})?\\/[^\\s]*[^\\s\\.,]";
-//    UErrorCode uStatus= U_ZERO_ERROR;
-//    UBool isMatch;
-//
-//    printf("regex = %s\n",regText);
-//    regEx=uregex_openC(regText,0, NULL, &uStatus);
-//    uregex_setText (regEx, uc, -1, &uStatus);
-//    isMatch = uregex_find(regEx, 0, &uStatus);
-//    if (!isMatch){
-//        int32_t failPos=uregex_end(regEx, 0, &uStatus);
-//        printf( "No match at position %d\n",failPos);
-//    }
-//    else {
-//        printf("Pattern matches\n");
-//        int nn = uregex_start(regEx, 0, &uStatus);
-//        printf("nn: %d\n", nn);
-//        printf("%s\n", txt+nn);
-//    }
-//
-//
-//    uregex_close(regEx);
-
-//    return 0;
-
-
     if (!ht_init()) {
         log_error("failed to initialize hashtable");
         return EXIT_FAILURE;
     }
 
-//    index_metadata2("renaleharnstoffundelektrolytkonzentrationsprofdebeiexperimentellerasymmetrischerglomerulonephritis",
-//    "Michel\tAbdalla\nBerlin\tGermany\n",
-//                    "10.0000/asdf"
-//    );
-//
-//   index_metadata2("Renale Harnstoff- und Elektrolytkonzentrationsprofile bei experimenteller asymmetrischer Glomerulonephritis",
-//                   "L. J.\tHeuer\nH. J.\tLudwig",
-//                   "10.1007/bf01971386"
-//   );
-//
-//    uint8_t *tt = "renaleharnstoffundelektrolytkonzentrationsprofdebeiexperimentellerasymmetrischerglomerulonephritis";
-//    uint64_t title_hash = text_hash64(tt, strlen(tt));
-//    //printf("Lookup: %lu %.*s\n", title_hash, title_end-title_start+1, output_text+title_start);
-//
-//    slot_t *slots[100];
-//    uint32_t slots_len;
-//
-//    ht_get_slots(title_hash, slots, &slots_len);
-//    if (slots_len) {
-//        printf("fffffff\n");
-//    }
-////
-//    return 0;
-
-
-        stats_t stats = ht_stats();
+    stats_t stats = ht_stats();
     log_info("\nused_rows=%u\ntotal_ah_slots=%u\ntotal_th_slots=%u\nmax_ah_slots=%u\nmax_th_slots=%u\n",
              stats.used_rows, stats.total_ah_slots, stats.total_th_slots, stats.max_ah_slots, stats.max_th_slots);
 
@@ -599,10 +468,8 @@ int main(int argc, char **argv) {
     onion_url *urls = onion_root_url(on);
 
     if(!indexing_mode) onion_url_add(urls, "recognize", url_recognize);
-    onion_url_add(urls, "index2", url_index2);
+    onion_url_add(urls, "index", url_index);
     onion_url_add(urls, "stats", url_stats);
-//    onion_url_add_handler(urls, "panel", onion_handler_export_local_new("static/panel.html"));
-
     log_info("listening on port %s", opt_port);
 
     onion_listen(on);
