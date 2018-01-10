@@ -6,12 +6,7 @@
 
 typedef struct stats {
     uint32_t used_rows;
-    uint32_t total_ah_slots;
-    uint32_t total_th_slots;
-    uint8_t max_ah_slots;
-    uint8_t max_th_slots;
-    uint8_t ah_slots_dist[ROW_SLOTS_MAX + 1];
-    uint8_t th_slots_dist[ROW_SLOTS_MAX + 1];
+    uint32_t total_titles;
 } stats_t;
 
 #pragma pack(push, 1)

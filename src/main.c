@@ -84,7 +84,6 @@ int save_json(uint8_t *data) {
     char buff[100];
     time_t now = time (0);
     strftime (buff, 100, "%Y-%m-%d %H:%M:%S", localtime (&now));
-    printf("%s\n", buff);
 
     char filename[1024];
     sprintf(filename, "./json/%s.%u.json", buff, rand());
@@ -92,7 +91,7 @@ int save_json(uint8_t *data) {
     FILE *f = fopen(filename, "w");
     if (f == NULL)
     {
-        printf("Error opening file!\n");
+        log_error("Error opening file!\n");
         exit(1);
     }
 
@@ -114,7 +113,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     const char *data = onion_block_data(dreq);
 
-    save_json(data);
+//    save_json(data);
 
     json_t *root;
     json_error_t error;
@@ -165,7 +164,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
         if(*result.url) json_object_set(obj, "url", json_string(result.url));
 //    }
 
-    printf("\n\nus: %d\ntype: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\npublisher: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
+    log_info("\n\nus: %d\ntype: %s\ntitle: %s\nauthors: %s\ndoi: %s\nisbn: %s\narxiv: %s\nyear: %s\ncontainer: %s\npublisher: %s\nabstract: %s\npages: %s\nvolume: %s\nissue: %s\nissn: %s\n",
            elapsed,
            result.type,
            result.title,
@@ -267,10 +266,7 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
     stats_t stats = ht_stats();
     json_t *obj = json_object();
     json_object_set(obj, "used_hashes", json_integer(stats.used_rows));
-    json_object_set(obj, "total_ah_slots", json_integer(stats.total_ah_slots));
-    json_object_set(obj, "total_th_slots", json_integer(stats.total_th_slots));
-    json_object_set(obj, "max_ah_slots", json_integer(stats.max_ah_slots));
-    json_object_set(obj, "max_th_slots", json_integer(stats.max_th_slots));
+    json_object_set(obj, "total_titles", json_integer(stats.total_titles));
 
     char *str = json_dumps(obj, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
     json_decref(obj);
@@ -446,8 +442,8 @@ int main(int argc, char **argv) {
     }
 
     stats_t stats = ht_stats();
-    log_info("\nused_rows=%u\ntotal_ah_slots=%u\ntotal_th_slots=%u\nmax_ah_slots=%u\nmax_th_slots=%u\n",
-             stats.used_rows, stats.total_ah_slots, stats.total_th_slots, stats.max_ah_slots, stats.max_th_slots);
+    log_info("\nused_rows=%u\ntotal_titles=%u\n",
+             stats.used_rows, stats.total_titles);
 
     pthread_t tid;
     pthread_create(&tid, NULL, saver_thread, 0);

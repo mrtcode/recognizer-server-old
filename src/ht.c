@@ -55,11 +55,7 @@ stats_t ht_stats() {
     stats_t stats = {0};
     for (uint32_t i = 0; i < HASHTABLE_SIZE; i++) {
         if (rows[i].slots) stats.used_rows++;
-        stats.total_ah_slots += rows[i].len;
-    }
-
-    for (uint32_t i = 0; i < HASHTABLE_SIZE; i++) {
-        stats.ah_slots_dist[rows[i].len]++;
+        stats.total_titles += rows[i].len;
     }
 
     return stats;
