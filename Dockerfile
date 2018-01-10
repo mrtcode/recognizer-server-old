@@ -53,7 +53,6 @@ RUN apt-get update \
 
 COPY ./src /data/src
 COPY ./CMakeLists.txt /data/
-COPY ./static /data/static
 COPY ./wordlist.dat /data/
 COPY ./journal.dat /data/
 
