@@ -113,7 +113,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     const char *data = onion_block_data(dreq);
 
-//    save_json(data);
+    save_json(data);
 
     json_t *root;
     json_error_t error;
@@ -123,12 +123,6 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
         return OCS_PROCESSED;
     }
 
-    json_t *json_body = json_object_get(root, "body");
-
-    if (!json_is_object(json_body)) {
-        return OCS_PROCESSED;;
-    }
-
     struct timeval st, et;
 
     res_metadata_t result = {0};
@@ -136,7 +130,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     pthread_rwlock_rdlock(&data_rwlock);
 
     gettimeofday(&st, NULL);
-    rc = recognize(json_body, &result);
+    rc = recognize(root, &result);
     gettimeofday(&et, NULL);
 
     pthread_rwlock_unlock(&data_rwlock);
@@ -368,24 +362,6 @@ void print_usage() {
             "Usage example:\n" \
             "recognizer-server -d /var/db -p 8080\n"
     );
-}
-#include <unicode/ustdio.h>
-#include <unicode/ustring.h>
-#include <unicode/unorm2.h>
-#include <unicode/uregex.h>
-
-UChar *touc(const char *text, int32_t text_len) {
-    UErrorCode errorCode = U_ZERO_ERROR;
-    int32_t target_len;
-
-    UConverter *conv = ucnv_open("UTF-8", &errorCode);
-
-    target_len = UCNV_GET_MAX_BYTES_FOR_STRING(text_len, ucnv_getMaxCharSize(conv));
-    UChar *uc1 = malloc(target_len);
-
-    ucnv_toUChars(conv, uc1, text_len, text, text_len, &errorCode);
-
-    return uc1;
 }
 
 int main(int argc, char **argv) {
