@@ -1,7 +1,7 @@
 FROM debian:stretch
 
 RUN apt-get update \
-    && apt-get -y install build-essential cmake git autoconf libtool wget \
+    && apt-get -y install build-essential libz-dev cmake git autoconf libtool wget \
 
     && cd /tmp \
     && git clone https://github.com/davidmoreno/onion \
