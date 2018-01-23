@@ -32,6 +32,7 @@
 #include <unicode/utf.h>
 #include <sqlite3.h>
 #include <dirent.h>
+#include <zlib.h>
 #include "ht.h"
 #include "db.h"
 #include "text.h"
@@ -109,15 +110,43 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     const onion_block *dreq = onion_request_get_data(req);
 
+    const char *content_encoding = onion_request_get_header(req, "Content-Encoding");
+
     if (!dreq) return OCS_PROCESSED;
 
     const char *data = onion_block_data(dreq);
+    uint32_t data_len = onion_block_size(dreq);
 
-    save_json(data);
+    char *d = data;
+
+    char *uncompressed_data = 0;
+
+    if(content_encoding && !strcmp(content_encoding, "gzip")) {
+        uLong compSize = data_len;
+        uLongf ucompSize = 4096 * 1024;
+        uncompressed_data = malloc(4096 * 1024);
+
+        z_stream zStream;
+        memset(&zStream, 0, sizeof(zStream));
+        inflateInit2(&zStream, 16);
+
+        zStream.next_in = (Bytef*)data;
+        zStream.avail_in = compSize;
+        zStream.next_out = (Bytef*)uncompressed_data;
+        zStream.avail_out = ucompSize;
+
+        inflate(&zStream, Z_FINISH);
+        inflateEnd(&zStream);
+
+        printf("un: %s\n", uncompressed_data);
+        d=uncompressed_data;
+    }
+
+    save_json(d);
 
     json_t *root;
     json_error_t error;
-    root = json_loads(data, 0, &error);
+    root = json_loads(d, 0, &error);
 
     if (!root || !json_is_object(root)) {
         return OCS_PROCESSED;
@@ -182,6 +211,8 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
     onion_response_printf(res, "%s", str);
     free(str);
+
+    if(uncompressed_data) free(uncompressed_data);
 
     return OCS_PROCESSED;
 }
