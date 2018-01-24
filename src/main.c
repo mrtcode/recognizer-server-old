@@ -160,6 +160,8 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     rc = recognize(root, &result);
     gettimeofday(&et, NULL);
 
+    json_decref(root);
+
     pthread_rwlock_unlock(&data_rwlock);
 
     uint32_t elapsed = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);

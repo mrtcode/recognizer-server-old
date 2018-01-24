@@ -17,3 +17,4 @@
 #define YEAR_LEN 4
 #define ISSN_LEN 9
 #define URL_LEN 1024
+#define MAX_PAGES 5

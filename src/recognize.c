@@ -61,6 +61,8 @@ doc_t *get_doc(json_t *body) {
     if (!json_is_array(json_pages)) return 0;
     uint32_t pages_len = json_array_size(json_pages);
 
+    if(pages_len>MAX_PAGES) pages_len = MAX_PAGES;
+
     doc->pages = (page_t *) malloc(sizeof(page_t) * pages_len);
     doc->pages_len = pages_len;
 
@@ -186,6 +188,35 @@ doc_t *get_doc(json_t *body) {
     return doc;
 }
 
+int destroy_doc(doc_t *doc) {
+    for(int page_i = 0;page_i<doc->pages_len;page_i++) {
+        page_t *page = &doc->pages[page_i];
+
+        for(int flow_i=0;flow_i<page->flows_len;flow_i++) {
+            flow_t *flow = &page->flows[flow_i];
+
+            for(int block_i = 0;block_i<flow->blocks_len;block_i++) {
+                block_t *block = &flow->blocks[block_i];
+
+                for(int line_i=0;line_i<block->lines_len;line_i++) {
+                    line_t *line = &block->lines[line_i];
+
+                    for(int word_i=0;word_i<line->words_len;word_i++) {
+                        word_t *word = &line->words[word_i];
+
+                    }
+
+                    free(line->words);
+                }
+                free(block->lines);
+            }
+            free(flow->blocks);
+        }
+        free(page->flows);
+    }
+    free(doc->pages);
+}
+
 int doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
     *text_len = 0;
 
@@ -242,7 +273,7 @@ uint32_t get_first_page_by_fonts(doc_t *doc) {
     uint32_t start_page = 0;
 
     uint32_t fonts[100][100];
-    uint32_t fonts_len[10] = {0};
+    uint32_t fonts_len[100] = {0};
 
     for (uint32_t page_i = 0; page_i < doc->pages_len; page_i++) {
         page_t *page = doc->pages + page_i;
@@ -489,7 +520,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
 
     doc_t *doc = get_doc(body);
 
-    if (extract_jstor(&doc->pages[0], result)) return 1;
+    if (extract_jstor(&doc->pages[0], result)) goto end;
 
     uint8_t text[MAX_LOOKUP_TEXT_LEN];
     uint32_t text_len = MAX_LOOKUP_TEXT_LEN;
@@ -499,7 +530,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
     doc_to_text(doc, text, &text_len, MAX_LOOKUP_TEXT_LEN - 1);
     text_process(text, processed_text, &processed_text_len);
 
-    if(!processed_text_len) return 0;
+    if(!processed_text_len) goto end;
 
     extract_doi(text, result->doi);
     extract_isbn(text, result->isbn);
@@ -646,6 +677,9 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
             title_font_size = gb->max_font_size;
         }
     }
+
+    end:
+    destroy_doc(doc);
 
     return 0;
 }
