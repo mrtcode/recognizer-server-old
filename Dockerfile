@@ -1,7 +1,7 @@
 FROM debian:stretch
 
 RUN apt-get update \
-    && apt-get -y install build-essential cmake git autoconf libtool wget \
+    && apt-get -y install build-essential libz-dev cmake git autoconf libtool wget \
 
     && cd /tmp \
     && git clone https://github.com/davidmoreno/onion \
@@ -53,8 +53,8 @@ RUN apt-get update \
 
 COPY ./src /data/src
 COPY ./CMakeLists.txt /data/
-COPY ./static /data/static
-COPY ./blacklist.dat /data/
+COPY ./wordlist.dat /data/
+COPY ./journal.dat /data/
 
 RUN cd /data/ \
     && mkdir release \

@@ -1,7 +1,7 @@
 /*
  ***** BEGIN LICENSE BLOCK *****
 
- Copyright © 2017 Zotero
+ Copyright © 2018 Zotero
  https://www.zotero.org
 
  This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 #include <string.h>
 #include <jemalloc/jemalloc.h>
 #include "log.h"
-#include "blacklist.h"
+#include "journal.h"
 
 #define ROWS 1048576
 #define ROW_SLOTS_MAX 256
@@ -36,25 +36,25 @@ typedef struct row {
     uint32_t slots_len;
 } row_t;
 
-row_t *blacklist_rows = 0;
+row_t *journal_rows = 0;
 
 
-int blacklist_init() {
-    if (!(blacklist_rows = calloc(ROWS, sizeof(row_t)))) {
-        log_error("blacklist_rows calloc error");
+int journal_init() {
+    if (!(journal_rows = calloc(ROWS, sizeof(row_t)))) {
+        log_error("journal_rows calloc error");
         return BLACKLIST_ERROR;
     }
 
 
     FILE *fp;
-    char *file_name = "blacklist.dat";
+    char *file_name = "journal.dat";
     uint64_t file_size;
 
 
     fp = fopen(file_name, "rb");
 
     if (!fp) {
-        log_error("blacklist.dat not found");
+        log_error("journal.dat not found");
         return BLACKLIST_ERROR;
     }
 
@@ -68,7 +68,7 @@ int blacklist_init() {
 
     for (uint32_t i = 0; i < hashes_len; i++) {
         uint64_t hash = hashes[i];
-        blacklist_add(hash);
+        journal_add(hash);
     }
 
     free(hashes);
@@ -77,12 +77,12 @@ int blacklist_init() {
 }
 
 // 24 + 40 + 40 (24 + 64 + 16)
-uint8_t blacklist_add(uint64_t h) {
+uint8_t journal_add(uint64_t h) {
     const uint32_t slot_size = 8;
     uint32_t hash20 = (uint32_t) (h >> 44);
     uint64_t hash64 = h;
 
-    row_t *row = blacklist_rows + hash20;
+    row_t *row = journal_rows + hash20;
 
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {
@@ -116,12 +116,12 @@ uint8_t blacklist_add(uint64_t h) {
     return BLACKLIST_SUCCESS;
 }
 
-uint8_t blacklist_has(uint64_t h) {
+uint8_t journal_has(uint64_t h) {
     const uint32_t slot_size = 8;
     uint32_t hash20 = (uint32_t) (h >> 44);
     uint64_t hash64 = h;
 
-    row_t *row = blacklist_rows + hash20;
+    row_t *row = journal_rows + hash20;
 
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {

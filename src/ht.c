@@ -1,7 +1,7 @@
 /*
  ***** BEGIN LICENSE BLOCK *****
 
- Copyright © 2017 Zotero
+ Copyright © 2018 Zotero
  https://www.zotero.org
 
  This program is free software: you can redistribute it and/or modify
@@ -33,6 +33,8 @@
 #include "text.h"
 #include "log.h"
 
+uint32_t doi_id = 0;
+
 row_t rows[HASHTABLE_SIZE] = {0};
 
 uint32_t ht_init() {
@@ -40,6 +42,8 @@ uint32_t ht_init() {
     if (!db_ht_load(rows)) {
         return 0;
     }
+
+    doi_id = db_dois_id_last();
     return 1;
 }
 
@@ -51,56 +55,49 @@ stats_t ht_stats() {
     stats_t stats = {0};
     for (uint32_t i = 0; i < HASHTABLE_SIZE; i++) {
         if (rows[i].slots) stats.used_rows++;
-        stats.total_ah_slots += rows[i].ah_len;
-        stats.total_th_slots += rows[i].th_len;
-        if (stats.max_ah_slots < rows[i].ah_len) stats.max_ah_slots = rows[i].ah_len;
-        if (stats.max_th_slots < rows[i].th_len) stats.max_th_slots = rows[i].th_len;
-    }
-
-    for (uint32_t i = 0; i < HASHTABLE_SIZE; i++) {
-        stats.ah_slots_dist[rows[i].ah_len]++;
-        stats.th_slots_dist[rows[i].th_len]++;
+        stats.total_titles += rows[i].len;
     }
 
     return stats;
 }
 
-slot_t *ht_get_slot(uint8_t type, uint64_t hash) {
-    uint32_t hash24 = (uint32_t) (hash >> 40);
-    uint32_t hash32 = (uint32_t) (hash >> 8);
-    uint8_t hash8 = (uint8_t) hash;
-    row_t *row = rows + hash24;
+slot_t *ht_get_slots(uint64_t title_hash, slot_t **slots, uint32_t *slots_len) {
+    uint32_t title_hash24 = (uint32_t) (title_hash >> 40);
+    uint32_t title_hash32 = (uint32_t) (title_hash >> 8);
+    uint8_t title_hash8 = (uint8_t) title_hash;
+    row_t *row = rows + title_hash24;
 
-    if (type == 1) {
-        for (uint32_t i = 0; i < row->ah_len; i++) {
-            if (row->slots[i].hash32 == hash32 && row->slots[i].hash8 == hash8) {
-                return &row->slots[i];
-            }
-        }
-    } else {
-        for (uint32_t i = row->ah_len; i < row->ah_len + row->th_len; i++) {
-            if (row->slots[i].hash32 == hash32 && row->slots[i].hash8 == hash8) {
-                return &row->slots[i];
-            }
+    *slots_len = 0;
+
+    for (uint32_t i = 0; i < row->len; i++) {
+        slot_t *slot = row->slots + i;
+        if (slot->title_hash32 == title_hash32 && slot->title_hash8 == title_hash8) {
+            slots[*slots_len] = &row->slots[i];
+            (*slots_len)++;
+//            if((*slots_len)>1) {
+//                (*slots_len)=0;
+//                return 0;
+//            }
         }
     }
+
     return 0;
 }
 
-uint32_t ht_add_slot(uint8_t type, uint64_t hash) {
-    uint32_t hash24 = (uint32_t) (hash >> 40);
-    uint32_t hash32 = (uint32_t) (hash >> 8);
-    uint8_t hash8 = (uint8_t) hash;
-    row_t *row = rows + hash24;
+uint32_t ht_add_slot(uint64_t title_hash, uint8_t a1_len, uint8_t a2_len, uint32_t a1_hash, uint32_t a2_hash) {
+    uint32_t title_hash24 = (uint32_t) (title_hash >> 40);
+    uint32_t title_hash32 = (uint32_t) (title_hash >> 8);
+    uint8_t title_hash8 = (uint8_t) title_hash;
 
-    if ((type == 1 && row->ah_len == ROW_SLOTS_MAX) ||
-        (type == 2 && row->th_len == ROW_SLOTS_MAX)) {
-        log_error("reached ROW_SLOTS_MAX limit for type %d", type);
+    row_t *row = rows + title_hash24;
+
+    if (row->len == ROW_SLOTS_MAX) {
+        log_error("reached ROW_SLOTS_MAX limit");
         return 0;
     }
 
     if (row->slots) {
-        if (!(row->slots = realloc(row->slots, sizeof(slot_t) * (row->ah_len + row->th_len + 1)))) {
+        if (!(row->slots = realloc(row->slots, sizeof(slot_t) * (row->len + 1)))) {
             log_error("realloc");
             return 0;
         };
@@ -113,21 +110,18 @@ uint32_t ht_add_slot(uint8_t type, uint64_t hash) {
 
     row->updated = 1;
 
-    slot_t *slot;
 
-    uint32_t i = row->ah_len + row->th_len;
-    if (type == 1) {
-        while (i > row->ah_len) {
-            *(row->slots + i) = *(row->slots + i - 1);
-            i--;
-        }
-        row->ah_len++;
-    } else {
-        row->th_len++;
-    }
 
-    slot = row->slots + i;
-    slot->hash32 = hash32;
-    slot->hash8 = hash8;
-    return 1;
+    slot_t *slot = row->slots + row->len;
+    slot->title_hash32 = title_hash32;
+    slot->title_hash8 = title_hash8;
+
+    slot->a1_len = a1_len;
+    slot->a2_len = a2_len;
+    slot->a1_hash = a1_hash;
+    slot->a2_hash = a2_hash;
+    slot->doi_id = ++doi_id;
+
+    row->len++;
+    return doi_id;
 }

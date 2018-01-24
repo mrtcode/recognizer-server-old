@@ -1,7 +1,7 @@
 /*
  ***** BEGIN LICENSE BLOCK *****
 
- Copyright © 2017 Zotero
+ Copyright © 2018 Zotero
  https://www.zotero.org
 
  This program is free software: you can redistribute it and/or modify
@@ -49,247 +49,70 @@ uint64_t index_total_indexed() {
     return total_indexed;
 }
 
-uint32_t insert_title(uint64_t metadata_hash, uint8_t *title) {
+uint32_t index_metadata2(uint8_t *title, uint8_t *authors, uint8_t *doi) {
     if (!title) return 0;
 
     uint8_t processed_title[MAX_TITLE_LEN + 1];
     uint32_t processed_title_len = MAX_TITLE_LEN + 1;
 
-    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0, 0, 0)) return 0;
+    if(!text_process(title, processed_title, &processed_title_len)) return 0;
 
     if (processed_title_len < 5) return 0;
 
     uint64_t title_hash = text_hash64(processed_title, processed_title_len);
-    //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
 
-    uint32_t title_len = strlen(title);
-
-    if (title_len >= MAX_TITLE_LEN) return 0;
-
-    uint8_t data[1 + MAX_TITLE_LEN];
-
-    data[0] = 1;
-    memcpy(data + 1, title, title_len);
-
-    pthread_rwlock_wrlock(&data_rwlock);
-
-    if (!ht_get_slot(2, title_hash)) {
-        ht_add_slot(2, title_hash);
-    }
-
-    db_thmh_insert(title_hash, metadata_hash);
-
-    db_fields_insert(metadata_hash, data, 1 + title_len);
-    pthread_rwlock_unlock(&data_rwlock);
-
-    return 1;
-}
-
-uint32_t insert_authors(uint64_t metadata_hash, uint8_t *authors) {
-    if (!authors) return 0;
-
-    uint32_t authors_len = strlen(authors);
-
-    if (authors_len >= MAX_AUTHORS_LEN) return 0;
-
-    uint8_t data[1 + MAX_AUTHORS_LEN];
-    uint32_t data_len = 0;
-
-    data[0] = 2;
-    memcpy(data + 1, authors, authors_len);
-    data_len = 1 + authors_len;
-
-    pthread_rwlock_wrlock(&data_rwlock);
-    db_fields_insert(metadata_hash, data, data_len);
-    pthread_rwlock_unlock(&data_rwlock);
-
-    return 1;
-}
-
-uint32_t insert_abstract(uint64_t metadata_hash, uint8_t *abstract) {
-    if (!abstract) return 0;
-
-    uint8_t processed_abstract[MAX_ABSTRACT_LEN + 1];
-    uint32_t processed_abstract_len = MAX_ABSTRACT_LEN + 1;
-
-    if (!text_process_field(abstract, processed_abstract, &processed_abstract_len, 0)) return 0;
-
-    if (processed_abstract_len < MIN_ABSTRACT_LEN) return 0;
-
-    uint8_t data[11];
-    data[0] = 3;
-    *((uint16_t *) (data + 1)) = processed_abstract_len;
-    *((uint32_t *) (data + 3)) = text_hash32(processed_abstract, processed_abstract_len);
-    // Rolling hash to speed up lookups
-    *((uint32_t *) (data + 7)) = text_rh_get32(processed_abstract, processed_abstract_len);
-
-    uint64_t abstract_hash = text_hash64(processed_abstract + 20, HASHABLE_ABSTRACT_LEN);
-
-    pthread_rwlock_wrlock(&data_rwlock);
-    db_fields_insert(metadata_hash, data, 11);
-
-    if (!ht_get_slot(1, abstract_hash)) {
-        ht_add_slot(1, abstract_hash);
-    }
-
-    db_ahmh_insert(abstract_hash, metadata_hash);
-    pthread_rwlock_unlock(&data_rwlock);
-
-    return 1;
-}
-
-uint32_t insert_year(uint64_t metadata_hash, uint8_t *year) {
-    if (!year) return 0;
-
-    uint8_t data[3];
-
-    uint16_t year_number = strtoul(year, 0, 10);
-
-    if (year_number < 1900 || year_number > 2025) {
-        return 0;
-    }
-
-    data[0] = 4;
-    *((uint16_t *) (data + 1)) = year_number;
-
-    pthread_rwlock_wrlock(&data_rwlock);
-    db_fields_insert(metadata_hash, data, 3);
-    pthread_rwlock_unlock(&data_rwlock);
-
-
-    return 1;
-}
-
-// Todo: Validate identifiers
-uint32_t insert_identifiers(uint64_t metadata_hash, uint8_t *identifiers) {
-    if (!identifiers) return 0;
-
-    uint8_t data[1 + MAX_IDENTIFIER_LEN];
-    uint32_t data_len = 0;
-
-    uint32_t count = 0;
-
-    uint8_t *p = identifiers;
+    uint8_t *data = authors;
+    uint32_t data_len = strlen(authors);
+    uint8_t *p = authors;
     uint8_t *s;
 
-    while (*p && count < MAX_IDENTIFIERS_PER_ITEM) {
-        while (*p == '\n') p++;
+    uint8_t *first_name, *last_name;
+
+    uint32_t authors_total = 0;
+    uint32_t authors_found = 0;
+
+    uint32_t author_hashes[10]={0};
+    uint8_t author_lengths[10]={0};
+
+    while (p - data < data_len - 1) {
+        while ((*p == '\t' || *p == '\n')) p++;
         if (!*p) break;
         s = p;
-        while (*p && *p != '\n') p++;
+        while ( *p && *p != '\t' && *p != '\n') p++;
 
-        if (p - s > MAX_IDENTIFIER_LEN) continue;
+        if (*p == '\t') {
+            first_name = s;
+        } else {
+            authors_total++;
+            last_name = s;
+            uint8_t norm_last_name[64];
+            uint32_t norm_last_name_len = 64;
+            text_process_fieldn(last_name, p - s, norm_last_name, &norm_last_name_len);
 
-        data[0] = 5;
-        memcpy(data + 1, s, p - s);
-        data_len = (uint32_t) (1 + p - s);
+            author_hashes[authors_total-1] = text_hash32(norm_last_name, norm_last_name_len);
+            author_lengths[authors_total-1] = (uint8_t)norm_last_name_len;
 
-        pthread_rwlock_wrlock(&data_rwlock);
-        db_fields_insert(metadata_hash, data, data_len);
-        pthread_rwlock_unlock(&data_rwlock);
-
-        count++;
+            if(authors_total>=2) break;
+        }
     }
-    return 1;
-}
 
-uint32_t insert_hash(uint64_t metadata_hash, uint8_t *hash) {
-    if (!hash || strlen(hash) != 32) return 0;
-    uint8_t buf[17];
-    memcpy(buf, hash, 16);
-    buf[16] = 0;
-    uint64_t file_hash = strtoul(buf, 0, 16);
-
-    pthread_rwlock_wrlock(&data_rwlock);
-    db_fhmh_insert(file_hash, metadata_hash);
-    pthread_rwlock_unlock(&data_rwlock);
-
-    return 1;
-}
-
-uint32_t index_metadata(metadata_t *metadata) {
-
-    uint64_t metadata_hash = get_metadata_hash(metadata->title, metadata->authors);
-    //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
-
-    if(!metadata_hash) return 0;
-
-    insert_title(metadata_hash, metadata->title);
-    insert_authors(metadata_hash, metadata->authors);
-    insert_abstract(metadata_hash, metadata->abstract);
-    insert_year(metadata_hash, metadata->year);
-    insert_identifiers(metadata_hash, metadata->identifiers);
-    insert_hash(metadata_hash, metadata->hash);
-
-    total_indexed++;
-    updated_t = time(0);
-    return 1;
-}
-
-uint32_t insert_doidata(uint64_t metadata_hash, uint8_t *title, uint8_t *authors, uint8_t *doi) {
-    if (!title) return 0;
-
-    uint8_t processed_title[MAX_TITLE_LEN + 1];
-    uint32_t processed_title_len = MAX_TITLE_LEN + 1;
-
-    if(!text_process(title, processed_title, &processed_title_len, 0, 0, 0, 0, 0, 0)) return 0;
-
-    if (processed_title_len < 5) return 0;
-
-    uint64_t title_hash = text_hash64(processed_title, processed_title_len);
-
-
-    uint32_t title_len = strlen(title);
-    uint32_t authors_len = strlen(authors);
-    uint32_t doi_len = strlen(doi);
-
-    uint32_t data_len = 4 + title_len + 1 + 4 + authors_len + 1 + 4 + doi_len + 1;
-
-    uint8_t *data = malloc(data_len);
-
-    uint8_t *p = data;
-
-    *((uint16_t*)p) = title_len;
-    p+=2;
-    memcpy(p, title, title_len);
-    p+=title_len;
-    *p++=0;
-
-    *((uint16_t*)p) = authors_len;
-    p+=2;
-    memcpy(p, authors, authors_len);
-    p+=authors_len;
-    *p++=0;
-
-    *((uint16_t*)p) = doi_len;
-    p+=2;
-    memcpy(p, doi, doi_len);
-    p+=doi_len;
-    *p=0;
+    slot_t *slots[100];
+    uint32_t slots_len;
 
     pthread_rwlock_wrlock(&data_rwlock);
 
-    if (!ht_get_slot(2, title_hash)) {
-        ht_add_slot(2, title_hash);
+    ht_get_slots(title_hash, slots, &slots_len);
+    if (slots_len<5) {
+        uint32_t doi_id = ht_add_slot(title_hash,
+                    author_lengths[0], author_lengths[1],
+                    author_hashes[0], author_hashes[1]
+        );
+
+        db_dois_insert(doi_id, doi, strlen(doi));
     }
 
-    db_thmh_insert(title_hash, metadata_hash);
-    db_doidata_insert(metadata_hash, data, data_len);
     pthread_rwlock_unlock(&data_rwlock);
-
-    free(data);
-}
-
-uint32_t index_metadata2(uint8_t *title, uint8_t *authors, uint8_t *doi) {
-
-    uint64_t metadata_hash = get_metadata_hash(title, authors);
-    //printf("Index: %lu %.*s\n", title_hash, processed_title_len, processed_title);
-
-    if(!metadata_hash) return 0;
-
-    insert_doidata(metadata_hash, title, authors, doi);
 
     total_indexed++;
     updated_t = time(0);
-    return 1;
 }
