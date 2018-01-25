@@ -4,8 +4,10 @@
 #include <time.h>
 #include "defines.h"
 
+extern int log_level;
+
 #define log(level, level_name, fmt, ...) \
-        if (level >= LOG_LEVEL) { \
+        if (level >= log_level) { \
             char time_buf[20];\
             time_t now = time (0);\
             strftime (time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", localtime (&now));\

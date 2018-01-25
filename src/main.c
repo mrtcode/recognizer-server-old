@@ -42,6 +42,8 @@
 #include "wordlist.h"
 #include "journal.h"
 
+int log_level = 1;
+
 onion *on = NULL;
 pthread_rwlock_t data_rwlock;
 pthread_rwlock_t saver_rwlock;
@@ -400,10 +402,15 @@ int main(int argc, char **argv) {
     char *opt_port = 0;
 
     int opt;
-    while ((opt = getopt(argc, argv, "d:p:i")) != -1) {
+    while ((opt = getopt(argc, argv, "d:p:i:l:")) != -1) {
         switch (opt) {
             case 'd':
                 opt_db_directory = optarg;
+                break;
+            case 'l':
+                if(optarg) {
+                    log_level = strtol(optarg, 0, 10);
+                }
                 break;
             case 'p':
                 opt_port = optarg;
