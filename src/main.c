@@ -432,7 +432,9 @@ int main(int argc, char **argv) {
     log_info("starting in normal mode");
 
 
-    setenv("ONION_LOG", "noinfo", 1);
+    if(log_level>0) {
+        setenv("ONION_LOG", "noinfo", 1);
+    }
     pthread_rwlock_init(&data_rwlock, 0);
     pthread_rwlock_init(&saver_rwlock, 0);
 
