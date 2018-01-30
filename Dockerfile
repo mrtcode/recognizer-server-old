@@ -53,8 +53,6 @@ RUN apt-get update \
 
 COPY ./src /data/src
 COPY ./CMakeLists.txt /data/
-COPY ./wordlist.dat /data/
-COPY ./journal.dat /data/
 
 RUN cd /data/ \
     && mkdir release \

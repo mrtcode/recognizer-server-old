@@ -26,37 +26,38 @@
 #include <string.h>
 #include <jemalloc/jemalloc.h>
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 
 #define ROWS 16777216
 #define ROW_SLOTS_MAX 16384
 
-uint64_t wordlist_unique_num = 0;
-uint64_t wordlist_feeded_num = 0;
+uint64_t word_unique_num = 0;
+uint64_t word_feeded_num = 0;
 
 typedef struct row {
     uint8_t *slots;
     uint32_t slots_len;
 } row_t;
 
-row_t *wordlist_rows = 0;
+row_t *word_rows = 0;
 
-int wordlist_init() {
-    if (!(wordlist_rows = calloc(ROWS, sizeof(row_t)))) {
-        log_error("wordlist_rows calloc error");
-        return WORDLIST_ERROR;
+uint32_t word_init(uint8_t *directory) {
+    if (!(word_rows = calloc(ROWS, sizeof(row_t)))) {
+        log_error("word_rows calloc error");
+        return 0;
     }
 
     FILE *fp;
-    char *file_name = "wordlist.dat";
     uint64_t file_size;
+    uint8_t path[PATH_MAX];
 
+    snprintf(path, PATH_MAX, "%s/word.dat", directory);
 
-    fp = fopen(file_name, "rb");
+    fp = fopen(path, "rb");
 
     if (!fp) {
-        log_error("wordlist.dat not found");
-        return WORDLIST_ERROR;
+        log_error("%s not found", path);
+        return 0;
     }
 
     fseek(fp, 0, SEEK_END);
@@ -73,46 +74,28 @@ int wordlist_init() {
         uint32_t b = *((uint32_t *)(hashes+(i*20)+8+(4*1)));
         uint32_t c = *((uint32_t *)(hashes+(i*20)+8+(4*2)));
 
-        wordlist_add(hash, a, b, c);
+        word_add(hash, a, b, c);
         //log_debug("%lu %u %u %u\n", hash, a, b, c);
     }
 
     free(hashes);
 
-    return WORDLIST_SUCCESS;
-}
-
-int wordlist_save() {
-    FILE *fp;
-    char *file_name = "wordlist.dat";
-    fp = fopen(file_name, "wb");
-
-    if (!fp) {
-        log_error("wordlist.dat not found");
-        return WORDLIST_ERROR;
-    }
-
-    for(uint32_t i = 0;i<ROWS;i++) {
-        row_t *row = wordlist_rows + i;
-        if(row->slots_len) fwrite(row->slots, row->slots_len, 20, fp);
-    }
-
-    fclose(fp);
+    return 1;
 }
 
 // 24 + 40 + 40 (24 + 64 + 16)
-uint8_t wordlist_add(uint64_t h, uint32_t aa, uint32_t bb, uint32_t cc) {
-    wordlist_feeded_num++;
+uint8_t word_add(uint64_t h, uint32_t aa, uint32_t bb, uint32_t cc) {
+    word_feeded_num++;
 
-//    if(wordlist_feeded_num%10000==0) {
-//        log_debug("%lu %lu\n", wordlist_feeded_num, wordlist_unique_num);
+//    if(word_feeded_num%10000==0) {
+//        log_debug("%lu %lu\n", word_feeded_num, word_unique_num);
 //    }
 
     const uint32_t slot_size = 20;
     uint32_t hash24 = (uint32_t) (h >> 40);
     uint64_t hash64 = h;
 
-    row_t *row = wordlist_rows + hash24;
+    row_t *row = word_rows + hash24;
 
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {
@@ -125,30 +108,29 @@ uint8_t wordlist_add(uint64_t h, uint32_t aa, uint32_t bb, uint32_t cc) {
                 (*b)+=bb;
                 (*c)+=cc;
 
-                return WORDLIST_ERROR;
+                return 0;
             }
         }
     }
 
     if ((row->slots_len == ROW_SLOTS_MAX)) {
         log_error("reached ROW_SLOTS_MAX limit");
-        return WORDLIST_ERROR;
+        return 0;
     }
 
     if (row->slots) {
         if (!(row->slots = realloc(row->slots, slot_size * (row->slots_len + 1)))) {
             log_error("slot realloc failed");
-            return WORDLIST_ERROR;
+            return 0;
         }
     } else {
         if (!(row->slots = malloc(slot_size))) {
             log_error("slot malloc failed");
-            return WORDLIST_ERROR;
+            return 0;
         }
     }
 
-    wordlist_unique_num++;
-
+    word_unique_num++;
 
     *((uint64_t *) (row->slots + slot_size * row->slots_len)) = hash64;
 
@@ -166,15 +148,15 @@ uint8_t wordlist_add(uint64_t h, uint32_t aa, uint32_t bb, uint32_t cc) {
 
     row->slots_len++;
 
-    return WORDLIST_SUCCESS;
+    return 1;
 }
 
-uint8_t wordlist_get(uint64_t h, uint32_t *a, uint32_t *b, uint32_t *c) {
+uint8_t word_get(uint64_t h, uint32_t *a, uint32_t *b, uint32_t *c) {
     const uint32_t slot_size = 20;
     uint32_t hash24 = (uint32_t) (h >> 40);
     uint64_t hash64 = h;
 
-    row_t *row = wordlist_rows + hash24;
+    row_t *row = word_rows + hash24;
 
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {

@@ -5,14 +5,12 @@ set(CMAKE_C_STANDARD 99)
 
 set(SOURCE_FILES
         src/main.c
-        src/ht.c src/db.c
+        src/doidata.c
         src/xxhash.c
         src/text.c
         src/recognize.c
         src/recognize.h
-        src/index.c
-        src/index.h
-        src/wordlist.c
+        src/word.c
         src/journal.c
         src/log.h
         src/recognize_abstract.c

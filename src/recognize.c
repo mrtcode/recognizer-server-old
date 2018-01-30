@@ -35,13 +35,12 @@
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "ht.h"
-#include "db.h"
+#include "doidata.h"
 #include "text.h"
-#include "index.h"
+
 #include "recognize.h"
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 #include "journal.h"
 #include "recognize_abstract.h"
 #include "recognize_authors.h"
@@ -54,14 +53,13 @@
 extern UNormalizer2 *unorm2;
 
 doc_t *get_doc(json_t *body) {
-
     doc_t *doc = (doc_t *) malloc(sizeof(doc_t));
 
     json_t *json_pages = json_object_get(body, "pages");
     if (!json_is_array(json_pages)) return 0;
     uint32_t pages_len = json_array_size(json_pages);
 
-    if(pages_len>MAX_PAGES) pages_len = MAX_PAGES;
+    if (pages_len > MAX_PAGES) pages_len = MAX_PAGES;
 
     doc->pages = (page_t *) malloc(sizeof(page_t) * pages_len);
     doc->pages_len = pages_len;
@@ -70,8 +68,8 @@ doc_t *get_doc(json_t *body) {
         json_t *json_obj = json_array_get(json_pages, page_i);
         page_t *page = doc->pages + page_i;
 
-        page->content_x_left=9999999;
-        page->content_x_right=0;
+        page->content_x_left = 9999999;
+        page->content_x_right = 0;
 
         json_t *width = json_array_get(json_obj, 0);
         json_t *height = json_array_get(json_obj, 1);
@@ -98,18 +96,17 @@ doc_t *get_doc(json_t *body) {
 
                 block->font_size_min = 0;
                 block->font_size_max = 0;
-
                 block->text_len = 0;
 
-                json_t *xMin = json_array_get(json_obj, 0);
-                json_t *yMin = json_array_get(json_obj, 1);
-                json_t *xMax = json_array_get(json_obj, 2);
-                json_t *yMax = json_array_get(json_obj, 3);
+                json_t *x_min = json_array_get(json_obj, 0);
+                json_t *y_min = json_array_get(json_obj, 1);
+                json_t *x_max = json_array_get(json_obj, 2);
+                json_t *y_max = json_array_get(json_obj, 3);
 
-                block->xMin = json_number_value(xMin);
-                block->xMax = json_number_value(xMax);
-                block->yMin = json_number_value(yMin);
-                block->yMax = json_number_value(yMax);
+                block->x_min = json_number_value(x_min);
+                block->x_max = json_number_value(x_max);
+                block->y_min = json_number_value(y_min);
+                block->y_max = json_number_value(y_max);
 
                 json_t *json_lines = json_array_get(json_obj, 4);
                 if (!json_is_array(json_lines)) return 0;
@@ -124,17 +121,16 @@ doc_t *get_doc(json_t *body) {
                     line->words_len = json_array_size(json_words);
                     line->words = (word_t *) malloc(sizeof(word_t) * line->words_len);
 
-
                     for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                         json_t *json_obj = json_array_get(json_words, word_i);
                         word_t *word = line->words + word_i;
 
-                        json_t *xMin = json_array_get(json_obj, 0);
-                        json_t *yMin = json_array_get(json_obj, 1);
-                        json_t *xMax = json_array_get(json_obj, 2);
-                        json_t *yMax = json_array_get(json_obj, 3);
-                        json_t *fontSize = json_array_get(json_obj, 4);
-                        json_t *spaceAfter = json_array_get(json_obj, 5);
+                        json_t *x_min = json_array_get(json_obj, 0);
+                        json_t *y_min = json_array_get(json_obj, 1);
+                        json_t *x_max = json_array_get(json_obj, 2);
+                        json_t *y_max = json_array_get(json_obj, 3);
+                        json_t *font_size = json_array_get(json_obj, 4);
+                        json_t *space = json_array_get(json_obj, 5);
                         json_t *baseline = json_array_get(json_obj, 6);
                         json_t *rotation = json_array_get(json_obj, 7);
                         json_t *underlined = json_array_get(json_obj, 8);
@@ -144,16 +140,15 @@ doc_t *get_doc(json_t *body) {
                         json_t *font = json_array_get(json_obj, 12);
                         json_t *text = json_array_get(json_obj, 13);
 
-
-                        word->xMin = json_number_value(xMin);
-                        word->xMax = json_number_value(xMax);
-                        word->yMin = json_number_value(yMin);
-                        word->yMax = json_number_value(yMax);
-                        word->font_size = json_number_value(fontSize);
-                        word->space = json_integer_value(spaceAfter);
+                        word->x_min = json_number_value(x_min);
+                        word->x_max = json_number_value(x_max);
+                        word->y_min = json_number_value(y_min);
+                        word->y_max = json_number_value(y_max);
+                        word->font_size = json_number_value(font_size);
+                        word->space = json_integer_value(space);
                         word->baseline = json_number_value(baseline);
                         word->rotation = json_integer_value(rotation);
-                        word->underlined = json_integer_value(rotation);
+                        word->underlined = json_integer_value(underlined);
                         word->bold = json_integer_value(bold);
                         word->italic = json_integer_value(italic);
                         word->color = json_integer_value(color);
@@ -172,14 +167,13 @@ doc_t *get_doc(json_t *body) {
 
                         block->text_len += word->text_len;
 
-                        if (!line->xMin || line->xMin > word->xMin) line->xMin = word->xMin;
-                        if (!line->yMin || line->yMin > word->yMin) line->yMin = word->yMin;
-                        if (line->xMax < word->xMax) line->xMax = word->xMax;
-                        if (line->yMax < word->yMax) line->yMax = word->yMax;
+                        if (!line->x_min || line->x_min > word->x_min) line->x_min = word->x_min;
+                        if (!line->y_min || line->y_min > word->y_min) line->y_min = word->y_min;
+                        if (line->x_max < word->x_max) line->x_max = word->x_max;
+                        if (line->y_max < word->y_max) line->y_max = word->y_max;
 
-
-                        if(page->content_x_left>word->xMin) page->content_x_left = word->xMin;
-                        if(page->content_x_right<word->xMax) page->content_x_right = word->xMax;
+                        if (page->content_x_left > word->x_min) page->content_x_left = word->x_min;
+                        if (page->content_x_right < word->x_max) page->content_x_right = word->x_max;
                     }
                 }
             }
@@ -188,24 +182,18 @@ doc_t *get_doc(json_t *body) {
     return doc;
 }
 
-int destroy_doc(doc_t *doc) {
-    for(int page_i = 0;page_i<doc->pages_len;page_i++) {
+uint32_t destroy_doc(doc_t *doc) {
+    for (uint32_t page_i = 0; page_i < doc->pages_len; page_i++) {
         page_t *page = &doc->pages[page_i];
 
-        for(int flow_i=0;flow_i<page->flows_len;flow_i++) {
+        for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
             flow_t *flow = &page->flows[flow_i];
 
-            for(int block_i = 0;block_i<flow->blocks_len;block_i++) {
+            for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
                 block_t *block = &flow->blocks[block_i];
 
-                for(int line_i=0;line_i<block->lines_len;line_i++) {
+                for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
                     line_t *line = &block->lines[line_i];
-
-                    for(int word_i=0;word_i<line->words_len;word_i++) {
-                        word_t *word = &line->words[word_i];
-
-                    }
-
                     free(line->words);
                 }
                 free(block->lines);
@@ -217,7 +205,7 @@ int destroy_doc(doc_t *doc) {
     free(doc->pages);
 }
 
-int doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+uint32_t doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
     *text_len = 0;
 
     for (uint32_t page_i = 0; page_i < doc->pages_len && page_i < 2; page_i++) {
@@ -269,7 +257,6 @@ int doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text
 }
 
 uint32_t get_first_page_by_fonts(doc_t *doc) {
-
     uint32_t start_page = 0;
 
     uint32_t fonts[100][100];
@@ -348,9 +335,16 @@ uint32_t get_first_page_by_fonts(doc_t *doc) {
 uint32_t get_first_page_by_width(doc_t *doc) {
     uint32_t first_page = 0;
 
-    if(doc->pages_len<2) return 0;
+    // If there are at least 3 pages and all of them are different width,
+    // then something is wrong with the PDF and don't use this method to detect the first page.
+    if (doc->pages_len >= 3 && doc->pages[0].width != doc->pages[1].width &&
+        doc->pages[1].width != doc->pages[2].width) {
+        return 0;
+    }
 
-    for (int i = 0; i < doc->pages_len - 2; i++) {
+    if (doc->pages_len < 2) return 0;
+
+    for (uint32_t i = 0; i < doc->pages_len - 2; i++) {
         if (doc->pages[i].width != doc->pages[i + 1].width && doc->pages[i + 1].width == doc->pages[i + 2].width) {
             first_page = i + 1;
         }
@@ -359,7 +353,7 @@ uint32_t get_first_page_by_width(doc_t *doc) {
     return first_page;
 }
 
-int block_to_text(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+uint32_t block_to_text(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
     *text_len = 0;
     for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
         line_t *line = block->lines + line_i;
@@ -386,7 +380,7 @@ int block_to_text(block_t *block, uint8_t *text, uint32_t *text_len, uint32_t ma
     return 1;
 }
 
-int get_block_text(block_t *block, uint8_t *text) {
+uint32_t get_block_text(block_t *block, uint8_t *text, uint32_t max_text_size) {
     uint32_t text_len = 0;
 
     for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
@@ -397,7 +391,7 @@ int get_block_text(block_t *block, uint8_t *text) {
         for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
             word_t *word = line->words + word_i;
 
-            if ((text_len) + word->text_len >= 5000) {
+            if ((text_len) + word->text_len >= max_text_size - 2) {
                 *(text + text_len) = 0;
                 return 1;
             }
@@ -415,7 +409,7 @@ int get_block_text(block_t *block, uint8_t *text) {
     }
 }
 
-int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
+uint32_t extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
     for (uint32_t page_i = 0; page_i + 1 < doc->pages_len; page_i++) {
         page_t *page = doc->pages + page_i;
 
@@ -425,8 +419,8 @@ int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
             for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
                 block_t *block = flow->blocks + block_i;
 
-                // At the very end or top of page can only be an injected text
-                if (block->yMin < 15 || block->yMax > page->height - 15) continue;
+                // Only injected text can be at the top or bottom of the page
+                if (block->y_min < 15 || block->y_max > page->height - 15) continue;
 
                 for (uint32_t page2_i = page_i + 1; page2_i < doc->pages_len && page2_i <= page_i + 2; page2_i++) {
                     page_t *page2 = doc->pages + page2_i;
@@ -437,21 +431,21 @@ int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
                         for (uint32_t block2_i = 0; block2_i < flow2->blocks_len; block2_i++) {
                             block_t *block2 = flow2->blocks + block2_i;
 
-                            double width1 = block->xMax - block->xMin;
-                            double height1 = block->yMax - block->yMin;
+                            double width1 = block->x_max - block->x_min;
+                            double height1 = block->y_max - block->y_min;
 
-                            double width2 = block2->xMax - block2->xMin;
-                            double height2 = block2->yMax - block2->yMin;
+                            double width2 = block2->x_max - block2->x_min;
+                            double height2 = block2->y_max - block2->y_min;
 
                             if (
-                                    fabs(block->xMin - block2->xMin) < 10 &&
-                                    fabs(block->yMin - block2->yMin) < 10 &&
+                                    fabs(block->x_min - block2->x_min) < 10 &&
+                                    fabs(block->y_min - block2->y_min) < 10 &&
                                     fabs(width1 - width2) < 10 &&
                                     fabs(height1 - height2) < 10) {
                                 uint8_t data1[10000] = {0};
                                 uint8_t data2[10000] = {0};
-                                get_block_text(block, data1);
-                                get_block_text(block2, data2);
+                                get_block_text(block, data1, sizeof(data1));
+                                get_block_text(block2, data2, sizeof(data2));
 
                                 if (!strcmp(data1, data2)) {
                                     if (!strstr(text, data1)) {
@@ -470,11 +464,11 @@ int extract_header_footer(doc_t *doc, uint8_t *text, uint32_t text_size) {
     return 0;
 }
 
-int extract_from_headfoot(doc_t *doc, uint8_t *journal, uint8_t *volume, uint8_t *issue, uint8_t *year) {
+uint32_t extract_from_headfoot(doc_t *doc, uint8_t *journal, uint8_t *volume, uint8_t *issue, uint8_t *year) {
     uint8_t text[8192] = {0};
     extract_header_footer(doc, text, sizeof(text));
 
-    log_debug("headfoot: %s\n", text);
+    log_debug("headfoot text: %s\n", text);
 
     extract_volume(text, volume);
     extract_issue(text, issue);
@@ -482,7 +476,7 @@ int extract_from_headfoot(doc_t *doc, uint8_t *journal, uint8_t *volume, uint8_t
     extract_journal(text, journal);
 }
 
-int process_metadata(json_t *json_metadata, pdf_metadata_t *pdf_metadata) {
+uint32_t process_metadata(json_t *json_metadata, pdf_metadata_t *pdf_metadata) {
     const char *key;
     json_t *value;
 
@@ -498,6 +492,118 @@ int process_metadata(json_t *json_metadata, pdf_metadata_t *pdf_metadata) {
         }
     }
     return 0;
+}
+
+uint32_t title_to_doi(doc_t *doc, uint8_t *processed_text, uint32_t processed_text_len, uint8_t *doi) {
+    uint32_t max_title_len = 0;
+
+    for (uint32_t page_i = 0; page_i + 1 < doc->pages_len; page_i++) {
+        page_t *page = doc->pages + page_i;
+        title_blocks_t title_blocks[50];
+        uint32_t title_blocks_len = 0;
+        get_title_blocks(page, title_blocks, &title_blocks_len, 50);
+
+        for (uint32_t i = 0; i < title_blocks_len; i++) {
+            title_blocks_t *gb = &title_blocks[i];
+
+            for (uint32_t m = 0; m < gb->blocks_len; m++) {
+                uint8_t title[1024] = {0};
+                uint32_t title_len = 0;
+                for (uint32_t k = m; k < gb->blocks_len; k++) {
+                    if (title_len >= 500) break;
+                    uint32_t block_title_len;
+
+                    if (*title) {
+                        title[title_len++] = ' ';
+                        title[title_len] = 0;
+                    }
+
+                    block_to_text(gb->blocks[k], title + title_len, &block_title_len, 500 - title_len);
+                    title_len += block_title_len;
+                    title[title_len] = 0;
+
+                    if (title_len < 15) continue;
+
+                    if (title_len <= max_title_len) continue;
+
+                    if (get_doi_by_title(title, processed_text, processed_text_len, doi)) {
+                        log_debug("found doi %s in page $d", doi, page_i);
+                    }
+
+                }
+            }
+
+        }
+    }
+
+    return !!max_title_len;
+}
+
+uint32_t extract_title_authors(page_t *page, uint8_t *res_title, uint8_t *res_authors) {
+
+    title_blocks_t title_blocks[50];
+    uint32_t title_blocks_len = 0;
+    get_title_blocks(page, title_blocks, &title_blocks_len, 50);
+
+    log_debug("largest font size: %f\n", title_blocks[0].max_font_size);
+
+    title_blocks_t *max_gb = &title_blocks[0];
+    for (uint32_t i = 0; i < title_blocks_len; i++) {
+        title_blocks_t *gb1 = &title_blocks[i];
+        if (gb1->sq > max_gb->sq) max_gb = gb1;
+    }
+
+    double title_font_size = 0;
+
+    for (uint32_t i = 0; i < title_blocks_len; i++) {
+        title_blocks_t *gb = &title_blocks[i];
+
+        // Title must be in the first half of the page
+        if (gb->x_min > page->height / 2) continue;
+
+        //if (gb->max_font_size <= main_font->font_size && !gb->upper) continue;
+
+        uint8_t title[1024] = {0};
+        uint32_t title_len = 0;
+        for (uint32_t k = 0; k < gb->blocks_len; k++) {
+            if (title_len >= 500) break;
+            uint32_t block_title_len;
+            block_to_text(gb->blocks[k], title + title_len, &block_title_len, 500 - title_len);
+            title_len += block_title_len;
+            title[title_len++] = ' ';
+            title[title_len] = 0;
+        }
+        log_debug("possible title: %s\n", title);
+
+        if (!gb->upper) {
+            uint32_t skip = 0;
+
+            for (uint32_t j = 0; j < title_blocks_len; j++) {
+                title_blocks_t *gb2 = &title_blocks[j];
+                if (gb2 != gb && gb2->max_font_size == gb->max_font_size) {
+                    skip = 1;
+                    break;
+                }
+            }
+            if (skip) continue;
+        }
+
+        // Measure characters count instead of byte len
+        // "Biometric Encryption™" ?
+        if (title_len < 20 || title_len > 500) continue;
+
+        if (get_alphabetic_percent(title) < 70) continue;
+
+        uint8_t authors[AUTHORS_LEN] = {0};
+        get_authors(gb->y_max, page, authors, sizeof(authors));
+        log_debug("possible authors: %s\n", authors);
+
+        if (title_len >= 20 && title_font_size < gb->max_font_size && *authors) {
+            strcpy(res_title, title);
+            strcpy(res_authors, authors);
+            title_font_size = gb->max_font_size;
+        }
+    }
 }
 
 uint32_t recognize(json_t *body, res_metadata_t *result) {
@@ -530,7 +636,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
     doc_to_text(doc, text, &text_len, MAX_LOOKUP_TEXT_LEN - 1);
     text_process(text, processed_text, &processed_text_len);
 
-    if(!processed_text_len) goto end;
+    if (!processed_text_len) goto end;
 
     extract_doi(text, result->doi);
     extract_isbn(text, result->isbn);
@@ -591,9 +697,9 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
         }
     }
 
-    int start;
-    int first = 1;
-    int last = total_pages;
+    uint32_t start;
+    uint32_t first = 1;
+    uint32_t last = total_pages;
 
     if (extract_pages(doc, &start, &first)) {
         if (first == 1) {
@@ -626,57 +732,12 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
 
     extract_from_headfoot(doc, result->container, result->volume, result->issue, result->year);
 
-    title_blocks_t title_blocks[50];
-    uint32_t title_blocks_len = 0;
-    get_title_blocks(page, title_blocks, &title_blocks_len, 50);
-
-    log_debug("largest font size: %f\n", title_blocks[0].max_font_size);
-
-    title_blocks_t *max_gb = &title_blocks[0];
-    for (uint32_t i = 0; i < title_blocks_len; i++) {
-        title_blocks_t *gb1 = &title_blocks[i];
-        if (gb1->sq > max_gb->sq) max_gb = gb1;
+    if (!*result->doi) {
+        title_to_doi(doc, processed_text, processed_text_len, result->doi);
     }
 
-    double title_font_size = 0;
+    extract_title_authors(page, result->title, result->authors);
 
-    for (uint32_t i = 0; i < title_blocks_len; i++) {
-        title_blocks_t *gb = &title_blocks[i];
-
-        if (gb->max_font_size <= main_font->font_size && !gb->upper) continue;
-
-        uint8_t title[1024] = {0};
-        uint32_t title_len = 0;
-        for (uint32_t k = 0; k < gb->blocks_len; k++) {
-            if (title_len >= 500) break;
-            uint32_t block_title_len;
-            block_to_text(gb->blocks[k], title + title_len, &block_title_len, 500 - title_len);
-            title_len += block_title_len;
-            title[title_len++] = ' ';
-            title[title_len] = 0;
-        }
-        log_debug("possible title: %s\n", title);
-
-        // Measure characters count instead of byte len
-        // "Biometric Encryption™" ?
-        if (title_len < 20 || title_len > 500) continue;
-
-        if (!*result->doi) {
-            get_doi_by_title(title, processed_text, processed_text_len, result->doi);
-        }
-
-        if (get_alphabetic_percent(title) < 70) continue;
-
-        uint8_t authors[10000] = {0};
-        get_authors(gb->yMax, page, authors, sizeof(authors));
-        log_debug("possible authors: %s\n", authors);
-
-        if (title_len >= 20 && title_font_size < gb->max_font_size && *authors) {
-            strcpy(result->title, title);
-            strcpy(result->authors, authors);
-            title_font_size = gb->max_font_size;
-        }
-    }
 
     end:
     destroy_doc(doc);

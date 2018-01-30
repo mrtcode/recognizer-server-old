@@ -68,8 +68,6 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
 
         U8_NEXT(text, i, -1, ci);
         if (u_isUAlphabetic(ci)) {
-
-
             UChar uc[16];
             int32_t res = unorm2_getDecomposition(unorm2, ci, uc, 16, &status);
 

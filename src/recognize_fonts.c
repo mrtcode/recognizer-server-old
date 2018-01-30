@@ -13,13 +13,11 @@
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "ht.h"
-#include "db.h"
+#include "doidata.h"
 #include "text.h"
-#include "index.h"
 #include "recognize.h"
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 #include "journal.h"
 #include "recognize_fonts.h"
 
@@ -45,7 +43,7 @@ void increment_font(fonts_info_t *fonts_info, uint32_t font_id, double font_size
     fonts_info->fonts[fonts_info->fonts_len - 1].count = value;
 }
 
-int init_fonts_info(fonts_info_t *fonts_info, page_t *pages, uint32_t pages_len) {
+uint32_t init_fonts_info(fonts_info_t *fonts_info, page_t *pages, uint32_t pages_len) {
 
     fonts_info->fonts_len = 0;
 

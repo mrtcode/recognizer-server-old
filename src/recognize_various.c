@@ -13,17 +13,15 @@
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "ht.h"
-#include "db.h"
+#include "doidata.h"
 #include "text.h"
-#include "index.h"
 #include "recognize.h"
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 #include "journal.h"
 #include "recognize_various.h"
 
-int extract_doi(uint8_t *text, uint8_t *doi) {
+uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -45,7 +43,7 @@ int extract_doi(uint8_t *text, uint8_t *doi) {
     regEx = uregex_openC(regText, 0, NULL, &uStatus);
     uregex_setText(regEx, uc, -1, &uStatus);
 
-    int max_len = 0;
+    uint32_t max_len = 0;
 
     while (uregex_findNext(regEx, &uStatus)) {
         int32_t start = uregex_start(regEx, 0, &uStatus);
@@ -66,7 +64,7 @@ int extract_doi(uint8_t *text, uint8_t *doi) {
     return ret;
 }
 
-int extract_isbn(uint8_t *text, uint8_t *isbn) {
+uint32_t extract_isbn(uint8_t *text, uint8_t *isbn) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -118,7 +116,7 @@ int extract_isbn(uint8_t *text, uint8_t *isbn) {
     return ret;
 }
 
-int extract_arxiv(uint8_t *text, uint8_t *arxiv) {
+uint32_t extract_arxiv(uint8_t *text, uint8_t *arxiv) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -134,7 +132,7 @@ int extract_arxiv(uint8_t *text, uint8_t *arxiv) {
     ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
-    const char regText[] = "arXiv:([a-z+-]+\\/[a-zA-Z0-9]+)";
+    const char regText[] = "arXiv:([a-zA-Z0-9\\.\\/]+)";
     UErrorCode uStatus = U_ZERO_ERROR;
     UBool isMatch;
 
@@ -156,7 +154,7 @@ int extract_arxiv(uint8_t *text, uint8_t *arxiv) {
     return ret;
 }
 
-int extract_year(uint8_t *text, uint8_t *year) {
+uint32_t extract_year(uint8_t *text, uint8_t *year) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -172,7 +170,7 @@ int extract_year(uint8_t *text, uint8_t *year) {
     ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
-    const char regText[] = "(^|\\(|\\s)([0-9]{4})(\\)|\\s|$)";
+    const char regText[] = "(^|\\(|\\s|,)([0-9]{4})(\\)|,|\\s|$)";
     UErrorCode uStatus = U_ZERO_ERROR;
     UBool isMatch;
 
@@ -188,14 +186,14 @@ int extract_year(uint8_t *text, uint8_t *year) {
         int32_t end = uregex_end(regEx, 2, &uStatus);
 
         uint8_t year_str[5] = {0};
-        int k = 0;
+        uint32_t k = 0;
         for (uint32_t i = start; i <= end && k < 4; i++, k++) {
             year_str[k] = uc[i];
         }
 
         uint32_t year_nr = atoi(year_str);
 
-        if (year_nr >= 1800 && year_nr <= 2018) {
+        if (year_nr >= 1800 && year_nr <= 2030) {
             strcpy(year, year_str);
             ret = 1;
         }
@@ -208,7 +206,7 @@ int extract_year(uint8_t *text, uint8_t *year) {
     return ret;
 }
 
-int extract_volume(uint8_t *text, uint8_t *volume) {
+uint32_t extract_volume(uint8_t *text, uint8_t *volume) {
     uint32_t ret = 0;
     UErrorCode errorCode = U_ZERO_ERROR;
     uint32_t text_len = strlen(text);
@@ -244,7 +242,7 @@ int extract_volume(uint8_t *text, uint8_t *volume) {
     return ret;
 }
 
-int extract_issue(uint8_t *text, uint8_t *issue) {
+uint32_t extract_issue(uint8_t *text, uint8_t *issue) {
     uint32_t ret = 0;
     UErrorCode errorCode = U_ZERO_ERROR;
     uint32_t text_len = strlen(text);
@@ -282,7 +280,7 @@ int extract_issue(uint8_t *text, uint8_t *issue) {
 }
 
 
-int extract_issn(uint8_t *text, uint8_t *issn) {
+uint32_t extract_issn(uint8_t *text, uint8_t *issn) {
     uint32_t ret = 0;
     UErrorCode errorCode = U_ZERO_ERROR;
 
@@ -316,7 +314,7 @@ int extract_issn(uint8_t *text, uint8_t *issn) {
     return ret;
 }
 
-int extract_journal(uint8_t *text, uint8_t *journal) {
+uint32_t extract_journal(uint8_t *text, uint8_t *journal) {
     UErrorCode errorCode = U_ZERO_ERROR;
     uint32_t text_len = strlen(text);
     UConverter *conv = ucnv_open("UTF-8", &errorCode);

@@ -13,13 +13,11 @@
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "ht.h"
-#include "db.h"
+#include "doidata.h"
 #include "text.h"
-#include "index.h"
 #include "recognize.h"
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 #include "journal.h"
 #include "recognize_abstract.h"
 
@@ -47,14 +45,14 @@ uint32_t is_simple_abstract_name(uint8_t *text) {
         }
 
         if (!*c) {
-            log_debug("FOUND22: %s\n", names[i]);
+            log_debug("found abstract name: %s\n", names[i]);
             return c - names[i];
         }
     }
     return 0;
 }
 
-int is_dot_last(uint8_t *text) {
+uint32_t is_dot_last(uint8_t *text) {
     uint8_t *c = &text[strlen(text) - 1];
 
     while (c >= text) {
@@ -73,7 +71,7 @@ int is_dot_last(uint8_t *text) {
     return 0;
 }
 
-int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_size) {
+uint32_t extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_size) {
     uint8_t found_abstract = 0;
 
     uint8_t start = 0;
@@ -84,11 +82,11 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
 
     UBool error = 0;
 
-    double abstract_xMin = 0;
-    double abstract_xMax = 0;
+    double abstract_x_min = 0;
+    double abstract_x_max = 0;
 
-    double txt_xMin = 0;
-    double txt_xMax = 0;
+    double txt_x_min = 0;
+    double txt_x_max = 0;
 
     for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
         flow_t *flow = page->flows + flow_i;
@@ -105,8 +103,8 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
                         found_abstract = 1;
                         start = 1;
                         start_skip = name_len;
-                        abstract_xMin = line->words[0].xMin;
-                        abstract_xMax = line->words[0].xMax;
+                        abstract_x_min = line->words[0].x_min;
+                        abstract_x_max = line->words[0].x_max;
                     }
                 }
 
@@ -133,14 +131,14 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
 
                                 if (finish) {
 
-                                    if (!txt_xMin || txt_xMin > word->xMin) {
-                                        txt_xMin = word->xMin;
+                                    if (!txt_x_min || txt_x_min > word->x_min) {
+                                        txt_x_min = word->x_min;
                                     }
 
-                                    if (!txt_xMax || txt_xMax < word->xMax) {
-                                        txt_xMax = word->xMax;
+                                    if (!txt_x_max || txt_x_max < word->x_max) {
+                                        txt_x_max = word->x_max;
                                     }
-//                                    if(abstract_xMax && word->xMin > abstract_xMax) {
+//                                    if(abstract_x_max && word->x_min > abstract_x_max) {
 //                                        return 0;
 //                                    }
 
@@ -185,15 +183,15 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
 
                 if (finish) {
 
-                    log_debug("line: %f\n", line->xMax);
+                    log_debug("line: %f\n", line->x_max);
                     if (is_dot_last(abstract) &&
                         line_i >= 2 &&
-                        fabs(block->lines[line_i - 2].xMax - block->lines[line_i - 1].xMax) < 1.0 &&
-                        block->lines[line_i].xMax < block->lines[line_i - 1].xMax - 2) {
+                        fabs(block->lines[line_i - 2].x_max - block->lines[line_i - 1].x_max) < 1.0 &&
+                        block->lines[line_i].x_max < block->lines[line_i - 1].x_max - 2) {
                         log_debug("%s\n\n\n", abstract);
                         abstract[abstract_len] = 0;
 
-                        if (abstract_xMax > txt_xMax || abstract_xMax < txt_xMin) {
+                        if (abstract_x_max > txt_x_max || abstract_x_max < txt_x_min) {
                             return 0;
                         }
                         return 1;
@@ -206,7 +204,7 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
                 if (!is_dot_last(abstract)) continue;
                 abstract[abstract_len] = 0;
 
-                if (abstract_xMax > txt_xMax || abstract_xMax < txt_xMin) {
+                if (abstract_x_max > txt_x_max || abstract_x_max < txt_x_min) {
                     return 0;
                 }
                 return 1;
@@ -217,7 +215,7 @@ int extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstract_s
             log_debug("%s\n\n\n", abstract);
             abstract[abstract_len] = 0;
 
-            if (abstract_xMax > txt_xMax || abstract_xMax < txt_xMin) {
+            if (abstract_x_max > txt_x_max || abstract_x_max < txt_x_min) {
                 return 0;
             }
             return 1;
@@ -280,7 +278,7 @@ uint32_t is_structured_abstract_name(uint8_t *text) {
     return 0;
 }
 
-int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstract_size) {
+uint32_t extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstract_size) {
     uint8_t start = 0;
     uint32_t abstract_len = 0;
     uint8_t exit = 0;
@@ -288,8 +286,8 @@ int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstra
 
     uint32_t names_detected = 0;
 
-    double xMin = 0;
-    double fontSize = 0;
+    double x_min = 0;
+    double font_size = 0;
 
     for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
         flow_t *flow = page->flows + flow_i;
@@ -307,20 +305,20 @@ int extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t abstra
                     exit = 0;
                     if (abstract_len) abstract[abstract_len++] = '\n';
 
-                    if (xMin) {
-                        if (fabs(xMin - line->words[0].xMin) > 2) {
+                    if (x_min) {
+                        if (fabs(x_min - line->words[0].x_min) > 2) {
                             return 0;
                         }
                     } else {
-                        xMin = line->words[0].xMin;
+                        x_min = line->words[0].x_min;
                     }
 
-                    if (fontSize) {
-                        if (fabs(fontSize - line->words[0].font_size) > 1) {
+                    if (font_size) {
+                        if (fabs(font_size - line->words[0].font_size) > 1) {
                             return 0;
                         }
                     } else {
-                        fontSize = line->words[0].font_size;
+                        font_size = line->words[0].font_size;
                     }
                 }
 

@@ -3,12 +3,11 @@
 
 #include "defines.h"
 
-
 typedef struct word {
-    double xMin;
-    double xMax;
-    double yMin;
-    double yMax;
+    double x_min;
+    double x_max;
+    double y_min;
+    double y_max;
     uint8_t space;
     double font_size;
     double baseline;
@@ -25,20 +24,20 @@ typedef struct word {
 typedef struct line {
     word_t *words;
     uint32_t words_len;
-    double xMin;
-    double xMax;
-    double yMin;
-    double yMax;
+    double x_min;
+    double x_max;
+    double y_min;
+    double y_max;
 } line_t;
 
 typedef struct block {
     uint8_t alignment;
     line_t *lines;
     uint32_t lines_len;
-    double xMin;
-    double xMax;
-    double yMin;
-    double yMax;
+    double x_min;
+    double x_max;
+    double y_min;
+    double y_max;
     double font_size_min;
     double font_size_max;
     uint32_t text_len;
@@ -90,6 +89,5 @@ typedef struct pdf_metadata {
 } pdf_metadata_t;
 
 uint32_t recognize(json_t *body, res_metadata_t *result);
-
 
 #endif //RECOGNIZER_SERVER_RECOGNIZE_H

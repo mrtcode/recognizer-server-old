@@ -13,13 +13,11 @@
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "ht.h"
-#include "db.h"
+#include "doidata.h"
 #include "text.h"
-#include "index.h"
 #include "recognize.h"
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 #include "journal.h"
 #include "recognize_authors.h"
 
@@ -30,7 +28,7 @@ typedef struct uchar {
     word_t *word;
 } uchar_t;
 
-int line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
+uint32_t line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
 
     *uchars_len = 0;
 
@@ -76,9 +74,8 @@ int line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
     return 0;
 }
 
-
-int get_word_type(uint8_t *name) {
-    int a = 0, b = 0, c = 0;
+int32_t get_word_type(uint8_t *name) {
+    int32_t a = 0, b = 0, c = 0;
 
     uint8_t output_text[300];
     uint32_t output_text_len = 200;
@@ -87,7 +84,7 @@ int get_word_type(uint8_t *name) {
 //
 //
     uint64_t word_hash = text_hash64(output_text, output_text_len);
-    wordlist_get(word_hash, &a, &b, &c);
+    word_get(word_hash, &a, &b, &c);
 //log_debug("%u %u %u\n", a, b, c);
     if (b + c == 0) return -a;
     if (a == 0) return b + c;
@@ -100,17 +97,17 @@ int get_word_type(uint8_t *name) {
     //log_debug("%s %u %u %u\n", name, a, b, c);
 }
 
-int is_conjunction(uint32_t *utext, uint32_t utext_len) {
+uint32_t is_conjunction(uint32_t *utext, uint32_t utext_len) {
     static int32_t con[10][32] = {
             {'a', 'n', 'd', 0},
             {'u', 'n', 'd', 0},
     };
 
-    for (int j = 0; j < 2; j++) {
+    for (uint32_t j = 0; j < 2; j++) {
         int32_t *c2 = &con[j][0];
         uint32_t n = 0;
         uint8_t found = 0;
-        for (int i = 0; i < utext_len; i++) {
+        for (uint32_t i = 0; i < utext_len; i++) {
             if (!*c2) {
                 found = 1;
                 break;
@@ -144,7 +141,7 @@ typedef struct author {
     uint8_t last_upper;
 } author_t;
 
-int extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *authors_len) {
+uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *authors, uint32_t *authors_len) {
     UBool error = 0;
 
     int32_t names[4][128];
@@ -237,9 +234,9 @@ int extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *author
 
             authors[*authors_len].names_len = names_len;
 
-            for (int a = 0; a < names_len; a++) {
-                int cur_name_len = 0;
-                for (int b = 0; b < names_lens[a]; b++) {
+            for (uint32_t a = 0; a < names_len; a++) {
+                uint32_t cur_name_len = 0;
+                for (uint32_t b = 0; b < names_lens[a]; b++) {
                     int32_t c = names[a][b];
                     U8_APPEND(authors[*authors_len].names[a], cur_name_len, 100, c, error);
                     authors[*authors_len].names[a][cur_name_len] = 0;
@@ -257,16 +254,13 @@ int extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *author
     return 1;
 }
 
-int get_authors(double title_yMax, page_t *page, uint8_t *authors_str, uint32_t authors_str_max_len) {
+uint32_t get_authors(double title_y_max, page_t *page, uint8_t *authors_str, uint32_t authors_str_max_len) {
     uchar_t *ustr = malloc(sizeof(uchar_t) * 1000);
     author_t *authors = malloc(sizeof(author_t) * 1000);
 
     memset(authors, 0, sizeof(author_t) * 1000);
 
     *authors_str = 0;
-
-
-
 
     for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
         flow_t *flow = page->flows + flow_i;
@@ -283,7 +277,7 @@ int get_authors(double title_yMax, page_t *page, uint8_t *authors_str, uint32_t 
 
                 // Skip vertical text at document sides
                 if(line->words[0].rotation) continue;
-                if (line->yMin <= title_yMax) {
+                if (line->y_min <= title_y_max) {
 
                     continue;
                 }
@@ -291,6 +285,12 @@ int get_authors(double title_yMax, page_t *page, uint8_t *authors_str, uint32_t 
 
                 uint32_t ustr_len;
                 line_to_uchars(line, ustr, &ustr_len);
+
+//                printf("\n");
+//                for(uint32_t m=0;m<line->words_len;m++) {
+//                    printf("%s", line->words[m].text);
+//                }
+//                printf("\n");
 
                 uint32_t authors_len = 0;
                 extract_authors_from_line(ustr, ustr_len, authors, &authors_len);
@@ -306,14 +306,14 @@ int get_authors(double title_yMax, page_t *page, uint8_t *authors_str, uint32_t 
                     if (fabs(author->font_size - font_size) > 2.0) goto end;
                     if (author->font != font) goto end;
 
-                    int negative = 0;
+                    uint32_t negative = 0;
                     for (uint32_t k = 0; k < author->names_len; k++) {
                         log_debug("%s ", author->names[k]);
 
                         // Skip initials
                         if (strlen(author->names[k]) <= 1) continue;
 
-                        int type = get_word_type(author->names[k]);
+                        int32_t type = get_word_type(author->names[k]);
                         if (type < 0) negative++;
                         log_debug(" (%d) ", type);
                     }
@@ -350,8 +350,6 @@ int get_authors(double title_yMax, page_t *page, uint8_t *authors_str, uint32_t 
                     log_debug("%f %d\n", author->font_size, author->font);
                 }
             }
-
-
         }
     }
 

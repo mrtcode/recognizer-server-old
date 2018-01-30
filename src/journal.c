@@ -38,24 +38,23 @@ typedef struct row {
 
 row_t *journal_rows = 0;
 
-
-int journal_init() {
+uint32_t journal_init(uint8_t *directory) {
     if (!(journal_rows = calloc(ROWS, sizeof(row_t)))) {
         log_error("journal_rows calloc error");
-        return BLACKLIST_ERROR;
+        return 0;
     }
 
-
     FILE *fp;
-    char *file_name = "journal.dat";
     uint64_t file_size;
+    uint8_t path[PATH_MAX];
 
+    snprintf(path, PATH_MAX, "%s/journal.dat", directory);
 
-    fp = fopen(file_name, "rb");
+    fp = fopen(path, "rb");
 
     if (!fp) {
-        log_error("journal.dat not found");
-        return BLACKLIST_ERROR;
+        log_error("%s not found", path);
+        return 0;
     }
 
     fseek(fp, 0, SEEK_END);
@@ -73,7 +72,7 @@ int journal_init() {
 
     free(hashes);
 
-    return BLACKLIST_SUCCESS;
+    return 1;
 }
 
 // 24 + 40 + 40 (24 + 64 + 16)
@@ -87,25 +86,25 @@ uint8_t journal_add(uint64_t h) {
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {
             if (*((uint64_t *) (row->slots + slot_size * i)) == hash64) {
-                return BLACKLIST_ERROR;
+                return 0;
             }
         }
     }
 
     if ((row->slots_len == ROW_SLOTS_MAX)) {
         log_error("reached ROW_SLOTS_MAX limit");
-        return BLACKLIST_ERROR;
+        return 0;
     }
 
     if (row->slots) {
         if (!(row->slots = realloc(row->slots, slot_size * (row->slots_len + 1)))) {
             log_error("slot realloc failed");
-            return BLACKLIST_ERROR;
+            return 0;
         }
     } else {
         if (!(row->slots = malloc(slot_size))) {
             log_error("slot malloc failed");
-            return BLACKLIST_ERROR;
+            return 0;
         }
     }
 
@@ -113,7 +112,7 @@ uint8_t journal_add(uint64_t h) {
 
     row->slots_len++;
 
-    return BLACKLIST_SUCCESS;
+    return 1;
 }
 
 uint8_t journal_has(uint64_t h) {
@@ -132,7 +131,3 @@ uint8_t journal_has(uint64_t h) {
     }
     return 0;
 }
-
-
-
-

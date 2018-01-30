@@ -13,19 +13,15 @@
 #include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "ht.h"
-#include "db.h"
+#include "doidata.h"
 #include "text.h"
-#include "index.h"
 #include "recognize.h"
 #include "log.h"
-#include "wordlist.h"
+#include "word.h"
 #include "journal.h"
 #include "recognize_jstor.h"
 
-
-
-int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t *groups_len) {
+uint32_t extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t *groups_len) {
     uint32_t ret = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -65,7 +61,7 @@ int extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t
     return ret;
 }
 
-int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+uint32_t get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
 
     *text_len = 0;
     for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
@@ -113,7 +109,7 @@ int get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max
     return 0;
 }
 
-int extract_jstor(page_t *page, res_metadata_t *result) {
+uint32_t extract_jstor(page_t *page, res_metadata_t *result) {
     uint8_t authors[2048] = {0};
     uint8_t source[2048] = {0};
     uint8_t published_by[2048] = {0};

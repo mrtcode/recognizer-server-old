@@ -13,7 +13,7 @@ typedef struct fonts_info {
     uint32_t fonts_len;
 } fonts_info_t;
 
-int init_fonts_info(fonts_info_t *fonts_info, page_t *pages, uint32_t pages_len);
+uint32_t  init_fonts_info(fonts_info_t *fonts_info, page_t *pages, uint32_t pages_len);
 
 void print_fonts_info(fonts_info_t *fonts_info);
 
