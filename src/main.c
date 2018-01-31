@@ -41,10 +41,7 @@
 #include "journal.h"
 
 int log_level = 1;
-
 onion *on = NULL;
-pthread_rwlock_t data_rwlock;
-pthread_rwlock_t saver_rwlock;
 
 json_t *authors_to_json(uint8_t *authors) {
     json_t *json_authors = json_array();
@@ -138,15 +135,12 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
 
     res_metadata_t result = {0};
     uint32_t rc;
-    pthread_rwlock_rdlock(&data_rwlock);
 
     gettimeofday(&st, NULL);
     rc = recognize(root, &result);
     gettimeofday(&et, NULL);
 
     json_decref(root);
-
-    pthread_rwlock_unlock(&data_rwlock);
 
     uint32_t us = ((et.tv_sec - st.tv_sec) * 1000000) + (et.tv_usec - st.tv_usec);
 
@@ -199,8 +193,6 @@ onion_connection_status url_stats(void *_, onion_request *req, onion_response *r
 
 void signal_handler(int signum) {
     log_info("signal received (%d), shutting down..", signum);
-
-    pthread_rwlock_wrlock(&data_rwlock);
 
     if (on) {
         onion_listen_stop(on);
@@ -261,8 +253,6 @@ int main(int argc, char **argv) {
     if (log_level > 0) {
         setenv("ONION_LOG", "noinfo", 1);
     }
-    pthread_rwlock_init(&data_rwlock, 0);
-    pthread_rwlock_init(&saver_rwlock, 0);
 
     if (!text_init()) {
         log_error("failed to initialize text processor");

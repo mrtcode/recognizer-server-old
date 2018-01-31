@@ -26,12 +26,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <pthread.h>
 #include "defines.h"
 #include "log.h"
 #include "doidata.h"
 
+pthread_rwlock_t doidata_rwlock;
 sqlite3 *doidata_sqlite;
-
 sqlite3_stmt *doidata_stmt = NULL;
 
 uint32_t doidata_init(char *directory) {
@@ -66,6 +67,7 @@ uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidata
     int rc;
     char *sql;
 
+    pthread_rwlock_wrlock(&doidata_rwlock);
     if ((rc = sqlite3_bind_int64(doidata_stmt, 1, title_hash)) != SQLITE_OK) {
         log_error("(%i): %s", rc, sqlite3_errmsg(doidata_sqlite));
         return 0;
@@ -96,9 +98,11 @@ uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidata
     }
 
     if ((rc = sqlite3_reset(doidata_stmt)) != SQLITE_OK) {
-        fprintf(stderr, "sqlite3_reset: (%i): %s\n", rc, sqlite3_errmsg(doidata_stmt));
+        fprintf(stderr, "sqlite3_reset: (%i): %s\n", rc, sqlite3_errmsg(doidata_sqlite));
         return 0;
     }
+
+    pthread_rwlock_unlock(&doidata_rwlock);
 
     return ret;
 }
