@@ -24,6 +24,8 @@
 uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
     uint32_t ret = 0;
 
+    *doi = 0;
+
     UErrorCode errorCode = U_ZERO_ERROR;
     int32_t target_len;
 
@@ -43,24 +45,30 @@ uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
     regEx = uregex_openC(regText, 0, NULL, &uStatus);
     uregex_setText(regEx, uc, -1, &uStatus);
 
-    uint32_t max_len = 0;
-
     while (uregex_findNext(regEx, &uStatus)) {
         int32_t start = uregex_start(regEx, 0, &uStatus);
         int32_t end = uregex_end(regEx, 0, &uStatus);
 
-        if (end - start > max_len) {
-            ucnv_fromUChars(conv, doi, DOI_LEN, uc + start, end - start, &uStatus);
-            max_len = end - start;
-        }
+        ucnv_fromUChars(conv, doi, DOI_LEN, uc + start, end - start, &uStatus);
 
-        ret = 1;
+        text_normalize_doi(doi);
+
+        uint8_t *c = doi+strlen(doi);
+
+        do {
+            if(*c=='/') break;
+            *c=0;
+            if(doidata_has_doi(doi)) {
+                ret = 1;
+                break;
+            }
+        } while(--c>doi);
+
+        if(ret) break;
     }
 
     uregex_close(regEx);
-
     free(uc);
-
     return ret;
 }
 

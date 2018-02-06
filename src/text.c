@@ -122,78 +122,6 @@ uint32_t text_process(uint8_t *text, uint8_t *output_text, uint32_t *output_text
     return 1;
 }
 
-uint32_t text_process_fieldn(uint8_t *text, uint32_t text_len,
-                             uint8_t *output_text, uint32_t *output_text_len) {
-    UErrorCode status = U_ZERO_ERROR;
-    int32_t max_output_text_len = *output_text_len - 1;
-    int32_t output_text_offset = 0;
-
-    int32_t si, i = 0;
-    UChar32 ci;
-
-    UBool error = 0;
-
-    do {
-        if (output_text_offset >= max_output_text_len) {
-            error = 1;
-            break;
-        }
-
-        if (i >= text_len) break;
-
-        si = i;
-        U8_NEXT(text, i, -1, ci);
-        if (u_isUAlphabetic(ci)) {
-            UChar uc[16];
-            int32_t res = unorm2_getDecomposition(unorm2, ci, uc, 16, &status);
-
-            if (res > 0) {
-                if (status != U_ZERO_ERROR) {
-                    log_error("unorm2_getDecomposition error: %s", u_errorName(status));
-                    return 0;
-                }
-
-                char decomposed_str[16] = {0};
-                int32_t decomposed_str_len = 0;
-
-                u_strToUTF8(decomposed_str, 16, &decomposed_str_len, uc, -1, &status);
-                if (status != U_ZERO_ERROR) {
-                    log_error("u_strToUTF8 error: %s", u_errorName(status));
-                    return 0;
-                }
-
-                UChar32 cj;
-                int32_t j = 0;
-
-                do {
-                    if (output_text_offset >= max_output_text_len) {
-                        error = 1;
-                        break;
-                    }
-                    U8_NEXT(decomposed_str, j, decomposed_str_len, cj);
-                    if (u_isUAlphabetic(cj)) {
-                        cj = u_tolower(cj);
-                        U8_APPEND(output_text, output_text_offset, max_output_text_len, cj, error);
-                        if (error) break;
-                    }
-                } while (cj > 0);
-                if (error) break;
-            } else {
-                ci = u_tolower(ci);
-                U8_APPEND(output_text, output_text_offset, max_output_text_len, ci, error);
-                if (error) break;
-            }
-        }
-    } while (ci > 0);
-
-    if (error) return 0;
-
-    output_text[output_text_offset] = 0;
-    *output_text_len = output_text_offset;
-
-    return 1;
-}
-
 uint32_t text_hash32(uint8_t *text, uint32_t text_len) {
     XXH64_state_t state64;
     XXH64_reset(&state64, 0);
@@ -228,6 +156,26 @@ text_info_t text_get_info(uint8_t *text) {
     } while (1);
 
     return text_info;
+}
+
+uint32_t text_normalize_doi(uint8_t *doi) {
+    uint32_t s, i = 0;
+    UChar32 c;
+
+    do {
+        s = i;
+        U8_NEXT(doi, i, -1, c);
+
+        if (!c) break;
+
+        if(c>='A' && c<='Z') {
+            c=c+32;
+            doi[s]=c;
+        }
+
+    } while (1);
+
+    return 1;
 }
 
 uint32_t get_alphabetic_percent(uint8_t *text) {

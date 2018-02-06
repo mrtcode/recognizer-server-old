@@ -227,7 +227,7 @@ uint32_t extract_abstract_simple(page_t *page, uint8_t *abstract, uint32_t abstr
 }
 
 uint32_t is_structured_abstract_name(uint8_t *text) {
-    static uint8_t names[10][32] = {
+    static uint8_t names[11][32] = {
             "background",
             "methods",
             "method",
@@ -238,6 +238,7 @@ uint32_t is_structured_abstract_name(uint8_t *text) {
             "results",
             "result",
             "purpose",
+            "measurements"
     };
 
     uint32_t types[11] = {
@@ -250,10 +251,11 @@ uint32_t is_structured_abstract_name(uint8_t *text) {
             4,
             5,
             5,
-            6
+            6,
+            7
     };
 
-    for (uint32_t i = 0; i < 10; i++) {
+    for (uint32_t i = 0; i < 11; i++) {
         uint8_t *c = names[i];
         uint8_t *v = text;
 
@@ -289,6 +291,8 @@ uint32_t extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t a
     double x_min = 0;
     double font_size = 0;
 
+    uint32_t last_name_type = 0;
+
     for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
         flow_t *flow = page->flows + flow_i;
 
@@ -300,6 +304,7 @@ uint32_t extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t a
 
                 uint32_t type = is_structured_abstract_name(line->words[0].text);
                 if (type) {
+                    last_name_type = type;
                     names_detected++;
                     start = 1;
                     exit = 0;
@@ -361,7 +366,7 @@ uint32_t extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t a
         }
 
         if (start) {
-            if (names_detected >= 2) {
+            if (names_detected >= 2 && last_name_type==3) {
                 log_debug("%s\n\n\n", abstract);
                 abstract[abstract_len] = 0;
                 return 1;

@@ -294,7 +294,9 @@ uint32_t get_first_page_by_fonts(doc_t *doc) {
         }
     }
 
-    for (uint32_t page_i = 0; page_i < doc->pages_len - 1; page_i++) {
+    if (doc->pages_len < 3) return 0;
+
+    for (uint32_t page_i = 0; page_i < doc->pages_len - 2; page_i++) {
 
         uint32_t missing = 0;
         uint32_t total = 0;
@@ -335,6 +337,19 @@ uint32_t get_first_page_by_fonts(doc_t *doc) {
 uint32_t get_first_page_by_width(doc_t *doc) {
     uint32_t first_page = 0;
 
+    if (doc->pages_len <= 1) return 0;
+
+    if (doc->pages_len == 2 &&
+        doc->pages[0].width != doc->pages[1].width) {
+        return 1;
+    }
+
+    if (doc->pages_len == 3 &&
+        doc->pages[0].width != doc->pages[1].width &&
+        doc->pages[1].width == doc->pages[2].width) {
+        return 1;
+    }
+
     // If there are at least 3 pages and all of them are different width,
     // then something is wrong with the PDF and don't use this method to detect the first page.
     if (doc->pages_len >= 3 && doc->pages[0].width != doc->pages[1].width &&
@@ -342,10 +357,11 @@ uint32_t get_first_page_by_width(doc_t *doc) {
         return 0;
     }
 
-    if (doc->pages_len < 2) return 0;
+    if (doc->pages_len < 4) return 0;
 
-    for (uint32_t i = 0; i < doc->pages_len - 2; i++) {
-        if (doc->pages[i].width != doc->pages[i + 1].width && doc->pages[i + 1].width == doc->pages[i + 2].width) {
+    for (uint32_t i = 0; i < doc->pages_len - 3; i++) {
+        if (doc->pages[i].width != doc->pages[i + 1].width &&
+            doc->pages[i + 1].width == doc->pages[i + 2].width) {
             first_page = i + 1;
         }
     }
@@ -576,16 +592,16 @@ uint32_t extract_title_authors(page_t *page, uint8_t *res_title, uint8_t *res_au
         log_debug("possible title: %s\n", title);
 
         if (!gb->upper) {
-            uint32_t skip = 0;
-
-            for (uint32_t j = 0; j < title_blocks_len; j++) {
-                title_blocks_t *gb2 = &title_blocks[j];
-                if (gb2 != gb && gb2->max_font_size == gb->max_font_size) {
-                    skip = 1;
-                    break;
-                }
-            }
-            if (skip) continue;
+            // Make sure there is no other block in this page that has the same font size
+//            uint32_t skip = 0;
+//            for (uint32_t j = 0; j < title_blocks_len; j++) {
+//                title_blocks_t *gb2 = &title_blocks[j];
+//                if (gb2 != gb && gb2->max_font_size == gb->max_font_size) {
+//                    skip = 1;
+//                    break;
+//                }
+//            }
+//            if (skip) continue;
         }
 
         // Measure characters count instead of byte len
@@ -602,8 +618,10 @@ uint32_t extract_title_authors(page_t *page, uint8_t *res_title, uint8_t *res_au
             strcpy(res_title, title);
             strcpy(res_authors, authors);
             title_font_size = gb->max_font_size;
+            return 1;
         }
     }
+    return 0;
 }
 
 uint32_t recognize(json_t *body, res_metadata_t *result) {
@@ -653,7 +671,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
 
     uint32_t first_page = 0;
 
-    // Abstract extraction is another way to get the first page
+//  Abstract extraction is another way to get the first page
     for (uint32_t i = 0; i < doc->pages_len; i++) {
         page_t *pg = &doc->pages[i];
         if (
@@ -672,11 +690,21 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
                 }
                 c--;
             }
-            if (*result->abstract && result->abstract[strlen(result->abstract) - 1] != '.') {
+
+            uint32_t found_keywords = 0;
+            c = &result->abstract[strlen(result->abstract) - 1];
+            while (c > result->abstract) {
+                if (!strncmp(c, "Keywords:", 9) || !strncmp(c, "KEYWORDS:", 9)) {
+                    *(c - 1) = 0;
+                    found_keywords = 1;
+                }
+                c--;
+            }
+
+            if (!found_keywords && *result->abstract && result->abstract[strlen(result->abstract) - 1] != '.') {
                 *result->abstract = 0;
                 first_page = 0;
             }
-
 
             break;
         }
@@ -722,6 +750,8 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
         }
     }
 
+    log_debug("first page: %d", first_page);
+
     page_t *page = &doc->pages[first_page];
 
     fonts_info_t fonts_info;
@@ -736,7 +766,12 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
         title_to_doi(doc, processed_text, processed_text_len, result->doi);
     }
 
-    extract_title_authors(page, result->title, result->authors);
+    if (!extract_title_authors(page, result->title, result->authors)) {
+        if (first_page < doc->pages_len - 1) {
+            page = &doc->pages[first_page + 1];
+            extract_title_authors(page, result->title, result->authors);
+        }
+    }
 
 
     end:

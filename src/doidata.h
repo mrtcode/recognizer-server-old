@@ -15,6 +15,8 @@ uint32_t doidata_init(char *directory);
 
 uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidatas_len);
 
+uint32_t doidata_has_doi(uint8_t *doi);
+
 uint32_t doidata_close();
 
 #endif //RECOGNIZER_SERVER_DOIDATA_H

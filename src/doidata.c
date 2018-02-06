@@ -34,6 +34,7 @@
 pthread_rwlock_t doidata_rwlock;
 sqlite3 *doidata_sqlite;
 sqlite3_stmt *doidata_stmt = NULL;
+sqlite3_stmt *doidata_has_doi_stmt = NULL;
 
 uint32_t doidata_init(char *directory) {
     int rc;
@@ -56,6 +57,12 @@ uint32_t doidata_init(char *directory) {
 
     sql = "SELECT * FROM doidata WHERE title_hash = ? LIMIT 11";
     if ((rc = sqlite3_prepare_v2(doidata_sqlite, sql, -1, &doidata_stmt, NULL)) != SQLITE_OK) {
+        log_error("%s (%i): %s", sql, rc, sqlite3_errmsg(doidata_sqlite));
+        return 0;
+    }
+
+    sql = "SELECT 1 FROM doidata WHERE doi = ? LIMIT 1";
+    if ((rc = sqlite3_prepare_v2(doidata_sqlite, sql, -1, &doidata_has_doi_stmt, NULL)) != SQLITE_OK) {
         log_error("%s (%i): %s", sql, rc, sqlite3_errmsg(doidata_sqlite));
         return 0;
     }
@@ -98,6 +105,30 @@ uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidata
     }
 
     if ((rc = sqlite3_reset(doidata_stmt)) != SQLITE_OK) {
+        fprintf(stderr, "sqlite3_reset: (%i): %s\n", rc, sqlite3_errmsg(doidata_sqlite));
+        return 0;
+    }
+
+    pthread_rwlock_unlock(&doidata_rwlock);
+
+    return ret;
+}
+
+uint32_t doidata_has_doi(uint8_t *doi) {
+    int rc;
+    uint32_t ret = 0;
+
+    pthread_rwlock_wrlock(&doidata_rwlock);
+    if ((rc = sqlite3_bind_text(doidata_has_doi_stmt, 1, doi, strlen(doi), SQLITE_STATIC)) != SQLITE_OK) {
+        log_error("(%i): %s", rc, sqlite3_errmsg(doidata_sqlite));
+        return 0;
+    }
+
+    if ((rc = sqlite3_step(doidata_has_doi_stmt)) == SQLITE_ROW) {
+        ret = 1;
+    }
+
+    if ((rc = sqlite3_reset(doidata_has_doi_stmt)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_reset: (%i): %s\n", rc, sqlite3_errmsg(doidata_sqlite));
         return 0;
     }
