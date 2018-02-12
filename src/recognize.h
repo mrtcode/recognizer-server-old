@@ -56,6 +56,8 @@ typedef struct page {
     double height;
     double content_x_left;
     double content_x_right;
+    uint32_t fs_dist[1000];
+    uint32_t fs_dist_len;
 } page_t;
 
 typedef struct doc {
@@ -89,5 +91,4 @@ typedef struct pdf_metadata {
 } pdf_metadata_t;
 
 uint32_t recognize(json_t *body, res_metadata_t *result);
-
 #endif //RECOGNIZER_SERVER_RECOGNIZE_H

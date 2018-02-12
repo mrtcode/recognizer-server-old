@@ -18,3 +18,5 @@
 #define ISSN_LEN 9
 #define URL_LEN 1024
 #define MAX_PAGES 5
+#define MAX_FONTS 50
+#define MAX_LINE_BLOCKS 500
