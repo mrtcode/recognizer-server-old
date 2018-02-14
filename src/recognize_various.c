@@ -24,6 +24,9 @@
 uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
     uint32_t ret = 0;
 
+    uint8_t doi_tmp1[DOI_LEN+1]={0};
+    uint8_t doi_tmp2[DOI_LEN+1]={0};
+
     *doi = 0;
 
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -39,7 +42,7 @@ uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
     ucnv_toUChars(conv, uc, target_len, text, text_len, &errorCode);
 
     URegularExpression *regEx;
-    const char regText[] = "10.\\d{4,9}\\/[-._;()\\/:A-Za-z0-9]+";
+    const char regText[] = "10.\\d{4,9}\\/[-._;()\\[\\]\\+<>\\/:A-Za-z0-9]+";
     UErrorCode uStatus = U_ZERO_ERROR;
 
     regEx = uregex_openC(regText, 0, NULL, &uStatus);
@@ -49,26 +52,39 @@ uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
         int32_t start = uregex_start(regEx, 0, &uStatus);
         int32_t end = uregex_end(regEx, 0, &uStatus);
 
-        ucnv_fromUChars(conv, doi, DOI_LEN, uc + start, end - start, &uStatus);
+        ucnv_fromUChars(conv, doi_tmp1, DOI_LEN, uc + start, end - start, &uStatus);
 
-        text_normalize_doi(doi);
+        strcpy(doi_tmp2, doi_tmp1);
 
-        uint8_t *c = doi+strlen(doi);
+        text_normalize_doi(doi_tmp2);
 
-        do {
-            if(*c=='/') break;
-            *c=0;
-            if(doidata_has_doi(doi)) {
-                ret = 1;
-                break;
+        uint8_t *c = doi_tmp2+strlen(doi_tmp2);
+
+        if(strlen(doi_tmp2)<64) {
+            do {
+                *c = 0;
+                if (doidata_has_doi(doi_tmp2)) {
+                    ret = 1;
+                    break;
+                }
+            } while (--c > doi_tmp2);
+
+            if (*c == '/' || c - doi_tmp2 < 9) {
+                *doi_tmp2 = 0;
             }
-        } while(--c>doi);
 
-        if(ret) break;
+            if (ret) break;
+        }
     }
 
     uregex_close(regEx);
     free(uc);
+
+    if(*doi_tmp2)
+        strcpy(doi, doi_tmp2);
+    else if(*doi_tmp1)
+        strcpy(doi, doi_tmp1);
+
     return ret;
 }
 

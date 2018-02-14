@@ -197,16 +197,14 @@ int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line,
          (line->x_max <= tb->x_max || fabs(line->x_max - tb->x_max) < 2.0) ||
          (line->x_min <= tb->x_min || fabs(line->x_min - tb->x_min) < 2.0) &&
          (line->x_max >= tb->x_max || fabs(line->x_max - tb->x_max) < 2.0))) {
-      tb->lines[tb->lines_len++] = line;
-      tb->y_min = line->y_min;
-      tb->y_max = line->y_max;
-      tb->x_min = line->x_min;
-      tb->x_max = line->x_max;
 
+      tb->lines[tb->lines_len++] = line;
       if (line->x_min < tb->x_min) tb->x_min = line->x_min;
       if (line->y_min < tb->y_min) tb->y_min = line->y_min;
       if (line->x_max > tb->x_max) tb->x_max = line->x_max;
       if (line->y_max > tb->y_max) tb->y_max = line->y_max;
+
+      tb->char_len += line->char_len;
 
       return 1;
     }
@@ -222,6 +220,7 @@ int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line,
   line_blocks[*line_blocks_len].bold = line->words[0].bold;
   line_blocks[*line_blocks_len].dominating_font = line_dominating_font;
   line_blocks[*line_blocks_len].upper = upper;
+  line_blocks[*line_blocks_len].char_len = line->char_len;
   (*line_blocks_len)++;
 
   return 0;
@@ -358,7 +357,7 @@ double get_average_font_size_threshold(page_t *page) {
   }
 
   double threshold_fold_size = max_font_size * 0.7;
-  if(threshold_fold_size < min_font_size+3 ) threshold_fold_size = min_font_size+3;
+  if(threshold_fold_size < min_font_size+3 ) threshold_fold_size = min_font_size+1;
 
   return threshold_fold_size;
 }
@@ -460,6 +459,8 @@ uint32_t get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t proc
   uint8_t output_text[MAX_LOOKUP_TEXT_LEN];
   uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
   text_process(title, output_text, &output_text_len);
+
+  //printf("t: %s\n", output_text);
 
   uint64_t title_hash = text_hash64(output_text, output_text_len);
   //log_debug("lookup: %lu %.*s\n", title_hash, title_end-title_start+1, output_text+title_start);

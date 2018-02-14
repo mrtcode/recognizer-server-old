@@ -5,7 +5,7 @@
 typedef struct line_block {
     line_t *lines[1000];
     uint32_t lines_len;
-    uint32_t text_len;
+    uint32_t char_len;
     double max_font_size;
     double x_min;
     double x_max;
@@ -17,6 +17,8 @@ typedef struct line_block {
     uint32_t dominating_font;
     uint8_t centered;
 } line_block_t;
+
+uint32_t print_block(line_block_t *gb);
 
 uint32_t get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t processed_text_len, uint8_t *doi);
 

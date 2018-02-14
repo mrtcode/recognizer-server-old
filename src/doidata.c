@@ -87,7 +87,7 @@ uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidata
     while ((rc = sqlite3_step(doidata_stmt)) == SQLITE_ROW) {
         doidata_t *doi = &doidatas[(*doidatas_len)++];
 
-        if(*doidatas_len == 11) {
+        if(*doidatas_len == 6) {
             ret = 0;
             break;
         }

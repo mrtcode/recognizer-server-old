@@ -17,6 +17,8 @@ uint32_t text_hash32(uint8_t *text, uint32_t text_len);
 
 uint64_t text_hash64(uint8_t *text, uint32_t text_len);
 
+uint32_t text_char_len(uint8_t *text);
+
 text_info_t text_get_info(uint8_t *text);
 
 uint32_t text_normalize_doi(uint8_t *doi);

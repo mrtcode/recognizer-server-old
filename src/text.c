@@ -136,6 +136,23 @@ uint64_t text_hash64(uint8_t *text, uint32_t text_len) {
     return (XXH64_digest(&state64));
 }
 
+uint32_t text_char_len(uint8_t *text) {
+    uint32_t len = 0;
+    uint32_t i = 0;
+    UChar32 c;
+
+    while(1) {
+        U8_NEXT(text, i, -1, c);
+        if(c>0) {
+            len++;
+        } else {
+            break;
+        }
+    }
+
+    return len;
+}
+
 text_info_t text_get_info(uint8_t *text) {
     text_info_t text_info;
     memset(&text_info, 0, sizeof(text_info_t));

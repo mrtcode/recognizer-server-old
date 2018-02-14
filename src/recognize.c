@@ -197,6 +197,10 @@ doc_t *get_doc(json_t *body) {
             word->text = json_string_value(text);
             word->text_len = strlen(word->text);
 
+            word->char_len = text_char_len(word->text);
+
+            line->char_len += word->char_len + (word->space ? 1 : 0);
+
             if (block->font_size_min == 0 || block->font_size_min > word->font_size) {
               block->font_size_min = word->font_size;
             }
@@ -526,38 +530,80 @@ uint32_t process_metadata(json_t *json_metadata, pdf_metadata_t *pdf_metadata) {
   return 0;
 }
 
+uint32_t skip_block(line_block_t *line_blocks, uint32_t line_blocks_len, uint32_t block_i) {
+  line_block_t *cur_lb = &line_blocks[block_i];
+  for(int i=block_i-1;i>0 && block_i - i < 5;i--) {
+    line_block_t *prev_lb = &line_blocks[i];
+
+    if(prev_lb->x_max<cur_lb->x_min || prev_lb->x_min>cur_lb->x_max) continue;
+
+    if(prev_lb->max_font_size > cur_lb->y_min - prev_lb->y_max) return 1;
+  }
+
+  return 0;
+}
+
 uint32_t title_to_doi(doc_t *doc, uint8_t *processed_text, uint32_t processed_text_len, uint8_t *doi) {
+  uint32_t count = 0;
   uint32_t max_title_len = 0;
-//return 0;
-  for (uint32_t page_i = 0; page_i + 1 < doc->pages_len; page_i++) {
+
+  uint8_t output_text[MAX_LOOKUP_TEXT_LEN];
+  uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
+
+  for (uint32_t page_i = 0; page_i + 1 < doc->pages_len && page_i<3; page_i++) {
     page_t *page = doc->pages + page_i;
-    line_block_t line_blocks[500];
+    line_block_t line_blocks[MAX_LINE_BLOCKS];
     uint32_t line_blocks_len = 0;
     get_line_blocks(page, line_blocks, &line_blocks_len);
 
     for (uint32_t i = 0; i < line_blocks_len; i++) {
       line_block_t *gb = &line_blocks[i];
 
-      for (uint32_t m = 0; m < gb->lines_len; m++) {
+      if(count>100) break;
+
+      if(skip_block(line_blocks, line_blocks_len, i)) continue;
+
+      for (uint32_t m = 0; m < gb->lines_len && m<2; m++) {
         uint8_t title[1024] = {0};
         uint32_t title_len = 0;
 
+        if(gb->lines_len-m>7) continue;
+
         line_block_to_text(gb, m, title, &title_len, sizeof(title));
 
-        if (title_len < 15) continue;
+        uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
+        text_process(title, output_text, &output_text_len);
+
+        if (output_text_len < 15 || output_text_len > 300) continue;
 
         if (title_len <= max_title_len) continue;
 
+        count++;
         if (get_doi_by_title(title, processed_text, processed_text_len, doi)) {
           log_debug("found doi %s in page %d", doi, page_i);
         }
       }
 
-      if (i < line_blocks_len - 1) {
+      if (i + 1 < line_blocks_len) {
         uint8_t title[1024] = {0};
         uint32_t title_len = 0;
-        line_block_to_text(&line_blocks[i], 0, title, &title_len, sizeof(title));
-        line_block_to_text(&line_blocks[i + 1], 0, title + title_len, &title_len, sizeof(title) - title_len);
+
+        line_block_t *cur_lb = &line_blocks[i];
+        line_block_t *next_lb = &line_blocks[i + 1];
+
+        if(cur_lb->y_min>page->height/3) continue;
+
+        if(cur_lb->lines_len+next_lb->lines_len>6) continue;
+
+        line_block_to_text(cur_lb, 0, title, &title_len, sizeof(title));
+        line_block_to_text(next_lb, 0, title + title_len, &title_len, sizeof(title) - title_len);
+
+        uint32_t output_text_len = MAX_LOOKUP_TEXT_LEN;
+        text_process(title, output_text, &output_text_len);
+
+        if (output_text_len < 15 || output_text_len > 300) continue;
+
+        count++;
         if (get_doi_by_title(title, processed_text, processed_text_len, doi)) {
           log_debug("found doi %s in page %d", doi, page_i);
         }
@@ -565,6 +611,7 @@ uint32_t title_to_doi(doc_t *doc, uint8_t *processed_text, uint32_t processed_te
     }
 
   }
+  //printf("get_doi_by_title: %d\n", count);
 
   return !!max_title_len;
 }

@@ -19,6 +19,7 @@ typedef struct word {
     uint32_t color;
     uint8_t *text;
     uint32_t text_len;
+    uint32_t char_len;
 } word_t;
 
 typedef struct line {
@@ -28,6 +29,7 @@ typedef struct line {
     double x_max;
     double y_min;
     double y_max;
+    uint32_t char_len;
 } line_t;
 
 typedef struct block {
