@@ -94,20 +94,43 @@ int32_t get_word_type(uint8_t *name) {
 }
 
 uint32_t is_conjunction(uint32_t *utext, uint32_t utext_len) {
-  static int32_t con[10][32] = {
+  static int32_t con[30][32] = {
           {'a', 'n', 'd', 0},
           {'u', 'n', 'd', 0},
+          {'b', 'y', 0},
+          {'p', 'r', 'o', 'f', 0},
+          {'b', 's', 'c', 0},
+          {'d', 's', 'c', 0},
+          {'p', 'h', 'd', 0},
+          {'m', 'd', 0},
+          {'m', 'p', 'h', 0},
+          {'r', 'd', 0},
+          {'l', 'd', 0},
+          {'b', 'c', 'h', 0},
+          {'f', 'c', 'c', 'p', 0},
+          {'b', 'a', 'o', 0},
+          {'p', 'h', 'a', 'r', 'm', 'd', 0},
+          {'f', 'r', 'c', 'p', 0},
+          {'p', 'a', '-', 'c', 0},
+          {'r', 'a', 'c', 0},
+          {'m', 'b', 'a', 0},
+          {'d', 'r', 'p', 'h', 0},
+          {'m', 'b', 'c', 'h', 'b', 0},
+          {'b', 'm', 0},
+          {'r', 'g', 'n', 0},
+          {'b', 'a', 0},
   };
 
-  for (uint32_t j = 0; j < 2; j++) {
+//  u_printf("p: ");
+//  for(int z=0;z<utext_len;z++) {
+//    u_printf("%c", utext[z]);
+//  }
+//  u_printf("\n\n");
+
+  for (uint32_t j = 0; j < 23; j++) {
     int32_t *c2 = &con[j][0];
     uint32_t n = 0;
-    uint8_t found = 0;
     for (uint32_t i = 0; i < utext_len; i++) {
-      if (!*c2) {
-        found = 1;
-        break;
-      }
       int32_t c = utext[i];
       if (u_tolower(c) != u_tolower(*c2)) {
         break;
@@ -117,9 +140,7 @@ uint32_t is_conjunction(uint32_t *utext, uint32_t utext_len) {
       n++;
     }
 
-    if (n != utext_len) return 0;
-
-    if (found) {
+    if (*c2==0 && n == utext_len) {
       return 1;
     }
   }
@@ -136,6 +157,9 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
   uint8_t names_len = 0;
   double font_size = 0;
   double baseline = 0;
+
+  uint32_t combined[1024] = {0};
+  uint32_t combined_len = 0;
 
   for (uint32_t i = 0; i < ustr_len; i++) {
     uchar_t *uchar = &ustr[i];
@@ -187,7 +211,10 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
         names[names_len][names_lens[names_len]++] = uchar->c;
       } else if (uchar->c == '.' || uchar->c == ' ') { // if names separator
 
+
+
         if (is_conjunction(names[names_len], names_lens[names_len])) {
+
           names_lens[names_len] = 0;
           continue;
         }
@@ -209,6 +236,8 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
     if (i < ustr_len - 1) continue;
     end:
 
+
+
     if (is_conjunction(names[names_len], names_lens[names_len])) {
       names_lens[names_len] = 0;
     }
@@ -216,6 +245,22 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
     if (names_lens[names_len]) {
       names_len++;
     }
+
+
+    combined_len=0;
+
+    for(int z=0;z<names_len;z++) {
+      for(int t=0;t<names_lens[z];t++) {
+        combined[combined_len++] = names[z][t];
+      }
+    }
+
+    if (is_conjunction(combined, combined_len)) {
+      names_len = 0;
+    }
+
+
+
     if (names_len >= 2 && names_len <= 4) {
 
       if (names_lens[names_len - 1] < 2) return 0;
@@ -297,6 +342,8 @@ uint32_t get_authors2(line_block_t *line_block, uint8_t *authors_str, uint32_t a
       } else {
         if(!negative) c = 2;
       }
+
+      if(negative == author->names_len) goto end;
 
       if(c>confidence) confidence=c;
 

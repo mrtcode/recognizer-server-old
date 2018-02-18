@@ -195,6 +195,7 @@ uint32_t text_normalize_doi(uint8_t *doi) {
     return 1;
 }
 
+// Todo: instead of alphabetic characters count typical characters
 uint32_t get_alphabetic_percent(uint8_t *text) {
 
     uint32_t total = 0;
@@ -212,7 +213,7 @@ uint32_t get_alphabetic_percent(uint8_t *text) {
 
         total++;
 
-        if (u_isUAlphabetic(c)) alphabetic++;
+        if (u_isUAlphabetic(c) || c==' ' || c==2010 || c==2011 || c==2012) alphabetic++;
 
     } while (1);
 

@@ -161,6 +161,38 @@ uint32_t is_line_upper(line_t *line) {
 //  return 0;
 //}
 
+uint32_t line_fonts_equal(line_t *l1, line_t *l2) {
+  uint32_t font1, font2;
+
+  if(!l1->words_len || !l2->words_len) return 0;
+
+  for(uint32_t i=0;i<l1->words_len;i++) {
+    word_t *word = &l1->words[i];
+    if(i==0) {
+      font1=word->font;
+    } else {
+      if(word->font != font1) {
+        return 0;
+      }
+    }
+  }
+
+  for(uint32_t i=0;i<l2->words_len;i++) {
+    word_t *word = &l2->words[i];
+    if(i==0) {
+      font2=word->font;
+    } else {
+      if(word->font != font2) {
+        return 0;
+      }
+    }
+  }
+
+  if(font1==font2) return 1;
+
+  return 2;
+}
+
 int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line, line_t *line2) {
 
   if(*line_blocks_len>=MAX_LINE_BLOCKS) return 0;
@@ -175,8 +207,11 @@ int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line,
     n--;
     line_block_t *tb = &line_blocks[n];
 
+    // Space between lines must be more or less equal. But <sup> can increase that space
     uint8_t skip = 0;
-    if (line2 && fabs(((line->y_min - tb->y_max) - (line2->y_min - line->y_max))) > 3) skip = 1;
+    if (line2 && fabs(((line->y_min - tb->y_max) - (line2->y_min - line->y_max))) > tb->max_font_size/3) skip = 1;
+
+    uint32_t lfe = line_fonts_equal(line, tb->lines[tb->lines_len-1]);
 
     double max_line_gap;
 
@@ -188,8 +223,8 @@ int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line,
 
     if (!skip &&
         tb->upper == upper &&
-        (line_dominating_font == tb->dominating_font ||
-         (tb->max_font_size == max_font_size && line->y_min - tb->y_max < tb->max_font_size * 1)) &&
+            ((lfe == 0 && (line_dominating_font == tb->dominating_font ||
+         (tb->max_font_size == max_font_size && line->y_min - tb->y_max < tb->max_font_size * 1))) || lfe==1) &&
         line->words[0].bold == tb->bold &&
         fabs(tb->max_font_size - max_font_size) <= 2.0 &&
         line->y_min - tb->y_max < max_line_gap &&
@@ -254,7 +289,7 @@ get_line_blocks(page_t *page, line_block_t *line_blocks, uint32_t *line_blocks_l
 uint32_t print_block(line_block_t *gb) {
   for (int j = 0; j < gb->lines_len; j++) {
     line_t *line = gb->lines[j];
-    printf("%g ", get_line_dominating_font_size(line));
+    printf("%g %g %d %d %g ", get_line_dominating_font_size(line), gb->max_font_size, gb->upper, gb->bold, line->y_min);
 //          printf("%g %g  %g %g  %g %g ",gb->x_min, gb->x_max, line->x_min, line->x_max, line->y_min, line->y_max);
     for (int k = 0; k < line->words_len; k++) {
       word_t *word = &line->words[k];
@@ -266,6 +301,58 @@ uint32_t print_block(line_block_t *gb) {
 }
 
 
+
+uint32_t extract_additional_authors(line_block_t *line_blocks, uint32_t line_blocks_len, uint32_t title_line_block_i,
+                                    uint8_t *authors_str) {
+
+  uint32_t a1 = 0;
+  uint32_t a2 = 0;
+
+  uint8_t a1_str[10000] = {0};
+  uint8_t a2_str[10000] = {0};
+
+  line_block_t *first_lb = &line_blocks[title_line_block_i];
+
+  // Horizontal authors
+  for(uint32_t i=title_line_block_i; i<line_blocks_len;i++) {
+    line_block_t *lb = &line_blocks[i];
+    if(fabs(first_lb->y_min - lb->y_min) < 3.0) {
+//      printf("found another author block:\n");
+//      print_block(lb);
+//      printf("\n\n");
+      if(get_authors2(lb, a1_str+strlen(a1_str), sizeof(a1_str)-strlen(a1_str))) {
+        a1++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Authors from the same font blocks
+  for(uint32_t i=title_line_block_i; i<line_blocks_len;i++) {
+    line_block_t *lb = &line_blocks[i];
+    if(first_lb->lines[0]->words[0].font == lb->lines[0]->words[0].font &&
+            first_lb->lines[0]->words[0].font_size == lb->lines[0]->words[0].font_size) {
+//      printf("found another author block:\n");
+//      print_block(lb);
+//      printf("\n\n");
+      if(get_authors2(lb, a2_str+strlen(a2_str), sizeof(a2_str)-strlen(a2_str))) {
+        a2++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  if(a1>a2) {
+    strcpy(authors_str, a1_str);
+  } else {
+    strcpy(authors_str, a2_str);
+  }
+
+  //printf("more authors: %s\n", a2_str);
+}
+
 uint32_t extract_authors(line_block_t *line_blocks, uint32_t line_blocks_len, uint32_t title_line_block_i,
                          uint8_t *authors_str) {
   uint32_t ret = 0;
@@ -275,6 +362,8 @@ uint32_t extract_authors(line_block_t *line_blocks, uint32_t line_blocks_len, ui
   line_block_t *tlb;
 
   uint32_t i = title_line_block_i;
+
+  uint32_t a_i = 0;
 
   tlb = &line_blocks[i];
 
@@ -312,13 +401,19 @@ uint32_t extract_authors(line_block_t *line_blocks, uint32_t line_blocks_len, ui
   if (a1 > 0 && a1 >= a2 && a1 >= a3) {
     strcpy(authors_str, a1_str);
     ret = 1;
+    a_i = i+1;
   } else if (a2 > 0 && a2 >= a1 && a2 >= a3) {
     strcpy(authors_str, a2_str);
     ret = 1;
+    a_i = i+2;
   } else if (a3 > 0 && a3 >= a1 && a3 >= a2) {
     strcpy(authors_str, a3_str);
     ret = 1;
+    a_i = i-1;
   }
+
+  if(ret)
+    extract_additional_authors(line_blocks, line_blocks_len, a_i, authors_str);
 
 //  printf("a1: %d\n%s\n\na2: %d\n%s\n\na3: %d\n%s\n\n", a1, a1_str, a2, a2_str, a3, a3_str);
 
@@ -362,6 +457,9 @@ double get_average_font_size_threshold(page_t *page) {
   return threshold_fold_size;
 }
 
+
+
+
 typedef struct slb {
     uint32_t i;
     line_block_t *line_block;
@@ -394,6 +492,14 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
   slb_t slbs[MAX_LINE_BLOCKS];
   get_sorted_blocks_by_font_size(line_blocks, line_blocks_len, slbs);
 
+//  for (uint32_t i = 0; i < line_blocks_len; i++) {
+//    line_block_t *tlb = &line_blocks[i];
+//    print_block(tlb);
+//    printf("\n\n");
+//
+//  }
+//
+//return 0;
   for (uint32_t i = 0; i < line_blocks_len; i++) {
     line_block_t *tlb = slbs[i].line_block;
 
@@ -404,7 +510,8 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
     line_block_to_text(tlb, 0, t, &t_len, 500);
 
     if (strlen(t) < 15 || strlen(t) > 400) continue;
-    if (get_alphabetic_percent(t) < 70) continue;
+
+    if (get_alphabetic_percent(t) < 60) continue;
 
     if (extract_authors(line_blocks, line_blocks_len, slbs[i].i, authors_str)) {
       uint32_t len;
@@ -415,10 +522,13 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
 
   for (uint32_t i = 0; i < line_blocks_len; i++) {
     line_block_t *tlb = &line_blocks[i];
+//    print_block(tlb);
+//    printf("\n\n");
+//    continue;
     if(!tlb->upper) continue;
     line_block_to_text(tlb, 0, t, &t_len, 500);
     if (strlen(t) < 20 || strlen(t) > 400) continue;
-    if (get_alphabetic_percent(t) < 70) continue;
+    if (get_alphabetic_percent(t) < 60) continue;
 
     if(extract_authors(line_blocks, line_blocks_len, i, authors_str)) {
       uint32_t len;
@@ -464,8 +574,6 @@ uint32_t get_doi_by_title(uint8_t *title, uint8_t *processed_text, uint32_t proc
 
   uint64_t title_hash = text_hash64(output_text, output_text_len);
   //log_debug("lookup: %lu %.*s\n", title_hash, title_end-title_start+1, output_text+title_start);
-
-  if (output_text_len < 14) return 0;
 
   doidata_t doidatas[10];
   uint32_t dois_len;

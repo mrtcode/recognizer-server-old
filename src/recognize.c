@@ -760,6 +760,10 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
     title_to_doi(doc, processed_text, processed_text_len, result->doi);
   }
 
+  uint32_t title_len = strlen(result->title);
+  if(title_len && (result->title[title_len-1]=='1' || result->title[title_len-1]=='*')) {
+    result->title[title_len-1]=0;
+  }
 
   end:
   destroy_doc(doc);
