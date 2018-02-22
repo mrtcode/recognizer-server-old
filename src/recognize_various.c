@@ -58,9 +58,9 @@ uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
 
         text_normalize_doi(doi_tmp2);
 
-        uint8_t *c = doi_tmp2+strlen(doi_tmp2);
+        uint8_t *c = doi_tmp2 + strlen(doi_tmp2);
 
-        if(strlen(doi_tmp2)<64) {
+        if (strlen(doi_tmp2) < 64) {
             do {
                 *c = 0;
                 if (doidata_has_doi(doi_tmp2)) {
@@ -80,9 +80,10 @@ uint32_t extract_doi(uint8_t *text, uint8_t *doi) {
     uregex_close(regEx);
     free(uc);
 
-    if(*doi_tmp2)
+    // Todo: Find a better way to validate DOI
+    if (*doi_tmp2 && strlen(doi_tmp2) > 10)
         strcpy(doi, doi_tmp2);
-    else if(*doi_tmp1)
+    else if (*doi_tmp1)
         strcpy(doi, doi_tmp1);
 
     return ret;

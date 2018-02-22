@@ -636,6 +636,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
 
   doc_t *doc = get_doc(body);
 
+  if(doc->pages_len==0) return 0;
 
   if (extract_jstor(&doc->pages[0], result)) goto end;
 
@@ -746,11 +747,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
 
   page_t *page = &doc->pages[first_page];
 
-//  fonts_info_t fonts_info;
-//  init_fonts_info(&fonts_info, page, doc->pages_len - first_page);
-
   extract_from_headfoot(doc, result->container, result->volume, result->issue, result->year);
-
 
   if (!extract_title_author(page, result->title, result->authors) && first_page == 0 && doc->pages_len >= 2) {
     extract_title_author(&doc->pages[1], result->title, result->authors);

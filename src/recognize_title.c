@@ -143,14 +143,20 @@ double get_line_dominating_font_size(line_t *line) {
 }
 
 uint32_t is_line_upper(line_t *line) {
+  uint32_t total_num=0;
+  uint32_t upper_num=0;
   for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
     word_t *word = line->words + word_i;
 
     text_info_t text_info = text_get_info(word->text);
-    if (text_info.lowercase) return 0;
-  }
 
-  return 1;
+    total_num += text_info.lowercase + text_info.uppercase;
+    upper_num += text_info.uppercase;
+  }
+if(total_num==0) return 0;
+  if(upper_num*100/total_num>=90) return 1;
+
+  return 0;
 }
 
 //uint32_t is_line_centered(page_t *page, line_t *line) {
@@ -193,6 +199,21 @@ uint32_t line_fonts_equal(line_t *l1, line_t *l2) {
   return 2;
 }
 
+uint32_t allow_upper_nonupper(line_t *l1, line_t *l2) {
+
+  for(uint32_t i=0;i<l1->words_len;i++) {
+    word_t *word1 = &l1->words[i];
+
+    for(uint32_t j=0;j<l2->words_len;j++) {
+      word_t *word2 = &l2->words[j];
+
+      if(word1->font==word2->font && word1->font_size==word2->font_size && word1->y_max-word1->y_min == word2->y_max-word2->y_min) return 1;
+    }
+  }
+
+  return 0;
+}
+
 int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line, line_t *line2) {
 
   if(*line_blocks_len>=MAX_LINE_BLOCKS) return 0;
@@ -222,11 +243,11 @@ int add_line(line_block_t *line_blocks, uint32_t *line_blocks_len, line_t *line,
     }
 
     if (!skip &&
-        tb->upper == upper &&
+            (tb->upper == upper || (line->y_min - tb->y_max < tb->max_font_size && allow_upper_nonupper(line,tb->lines[tb->lines_len-1])))&&
             ((lfe == 0 && (line_dominating_font == tb->dominating_font ||
          (tb->max_font_size == max_font_size && line->y_min - tb->y_max < tb->max_font_size * 1))) || lfe==1) &&
         line->words[0].bold == tb->bold &&
-        fabs(tb->max_font_size - max_font_size) <= 2.0 &&
+        fabs(tb->max_font_size - max_font_size) <= 1.0 &&
         line->y_min - tb->y_max < max_line_gap &&
         ((line->x_min >= tb->x_min || fabs(line->x_min - tb->x_min) < 2.0) &&
          (line->x_max <= tb->x_max || fabs(line->x_max - tb->x_max) < 2.0) ||
@@ -385,7 +406,13 @@ uint32_t extract_authors(line_block_t *line_blocks, uint32_t line_blocks_len, ui
   if (i+2 < line_blocks_len) {
     alb = &line_blocks[i + 2];
     slb = &line_blocks[i + 1];
-    if (tlb->max_font_size >= slb->max_font_size && tlb->max_font_size >= alb->max_font_size &&
+
+    uint32_t total_chars = 0;
+    for(uint32_t k=0;k<slb->lines_len;k++) {
+      total_chars += slb->lines[k]->char_len;
+    }
+
+    if (total_chars<300 && slb->y_min - tlb->y_max < (alb->y_min-slb->y_max)*2 && tlb->max_font_size >= slb->max_font_size && tlb->max_font_size >= alb->max_font_size &&
         tlb->y_max < slb->y_min && slb->y_max < alb->y_min) {
       a2 = get_authors2(alb, a2_str, sizeof(a2_str));
     }
@@ -499,11 +526,12 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
 //
 //  }
 //
-//return 0;
+
   for (uint32_t i = 0; i < line_blocks_len; i++) {
     line_block_t *tlb = slbs[i].line_block;
 
-    //print_block(tlb);
+//    print_block(tlb);
+//    printf("\n\n");
 
     if (tlb->max_font_size < font_size_threshold) continue;
 
@@ -526,6 +554,10 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
 //    printf("\n\n");
 //    continue;
     if(!tlb->upper) continue;
+
+//    print_block(tlb);
+//    printf("\n\n");
+
     line_block_to_text(tlb, 0, t, &t_len, 500);
     if (strlen(t) < 20 || strlen(t) > 400) continue;
     if (get_alphabetic_percent(t) < 60) continue;

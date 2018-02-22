@@ -24,7 +24,7 @@
 
 extern UNormalizer2 *unorm2;
 
-uint32_t line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
+uint32_t line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len, uint32_t uchars_size) {
 
   *uchars_len = 0;
 
@@ -35,7 +35,7 @@ uint32_t line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
     uint32_t s, i = 0;
     UChar32 c;
 
-    do {
+    while(*uchars_len < uchars_size) {
       s = i;
       U8_NEXT(text, i, -1, c);
 
@@ -51,14 +51,12 @@ uint32_t line_to_uchars(line_t *line, uchar_t *uchars, uint32_t *uchars_len) {
         continue;
       }
 
-      if (i > 500) break;
-
       uchars[*uchars_len].word = word;
       uchars[*uchars_len].c = c;
 
       (*uchars_len)++;
 
-    } while (1);
+    }
 
     if (word->space) {
       uchars[*uchars_len].word = word;
@@ -96,7 +94,40 @@ int32_t get_word_type(uint8_t *name) {
 uint32_t is_conjunction(uint32_t *utext, uint32_t utext_len) {
   static int32_t con[30][32] = {
           {'a', 'n', 'd', 0},
-          {'u', 'n', 'd', 0},
+          {'u', 'n', 'd', 0}
+  };
+
+//  u_printf("p: ");
+//  for(int z=0;z<utext_len;z++) {
+//    u_printf("%c", utext[z]);
+//  }
+//  u_printf("\n\n");
+
+  for (uint32_t j = 0; j < 2; j++) {
+    int32_t *c2 = &con[j][0];
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < utext_len; i++) {
+      int32_t c = utext[i];
+      if (u_tolower(c) != u_tolower(*c2)) {
+        break;
+      }
+
+      c2++;
+      n++;
+    }
+
+    if (*c2==0 && n == utext_len) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+
+
+uint32_t is_skip_word(uint32_t *utext, uint32_t utext_len) {
+  static int32_t con[30][32] = {
           {'b', 'y', 0},
           {'p', 'r', 'o', 'f', 0},
           {'b', 's', 'c', 0},
@@ -119,6 +150,8 @@ uint32_t is_conjunction(uint32_t *utext, uint32_t utext_len) {
           {'b', 'm', 0},
           {'r', 'g', 'n', 0},
           {'b', 'a', 0},
+          {'m', 's', 0},
+          {'m', 's', 'c', 0},
   };
 
 //  u_printf("p: ");
@@ -127,7 +160,7 @@ uint32_t is_conjunction(uint32_t *utext, uint32_t utext_len) {
 //  }
 //  u_printf("\n\n");
 
-  for (uint32_t j = 0; j < 23; j++) {
+  for (uint32_t j = 0; j < 24; j++) {
     int32_t *c2 = &con[j][0];
     uint32_t n = 0;
     for (uint32_t i = 0; i < utext_len; i++) {
@@ -164,14 +197,16 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
   for (uint32_t i = 0; i < ustr_len; i++) {
     uchar_t *uchar = &ustr[i];
 
-//        u_printf("%c\n", uchar->c);
+//    u_printf("%c\n", uchar->c);
 //
-//        if (names_lens[names_len] == 3
-//            && names[names_len][0] == 'B'
-//            && names[names_len][1] == 'a'
-//            && names[names_len][2] == 'r') {
-//            log_debug("%c\n", uchar->c);
-//        }
+//    if (names_lens[names_len] == 3
+//        && names[names_len][0] == 'A'
+//        && names[names_len][1] == 'c'
+//        && names[names_len][2] == 'a') {
+//        log_debug("%c\n", uchar->c);
+//    }
+
+    if(uchar->c == '~') continue;
 
     if (!names_lens[names_len]) {
 
@@ -180,7 +215,7 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
         authors[*authors_len].font = uchar->word->font;
       }
 
-      if (uchar->c == ' ') { // Skip all spaces before name
+      if (uchar->c == ' ' || uchar->c == '.') { // Skip all spaces before name
         continue;
       }
 
@@ -211,12 +246,15 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
         names[names_len][names_lens[names_len]++] = uchar->c;
       } else if (uchar->c == '.' || uchar->c == ' ') { // if names separator
 
-
-
         if (is_conjunction(names[names_len], names_lens[names_len])) {
-
           names_lens[names_len] = 0;
-          continue;
+          goto end;
+        }
+
+        if (is_skip_word(names[names_len], names_lens[names_len])) {
+          names_len = 0;
+          names_lens[names_len] = 0;
+          goto end;
         }
 
         if (!u_isUUppercase(names[names_len][0])) { // if name doesn't start with upper case letter
@@ -241,6 +279,12 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
     if (is_conjunction(names[names_len], names_lens[names_len])) {
       names_lens[names_len] = 0;
     }
+
+    if (is_skip_word(names[names_len], names_lens[names_len])) {
+      names_len = 0;
+      names_lens[names_len] = 0;
+    }
+
 
     if (names_lens[names_len]) {
       names_len++;
@@ -287,11 +331,11 @@ uint32_t extract_authors_from_line(uchar_t *ustr, uint32_t ustr_len, author_t *a
   return 1;
 }
 
-uint32_t get_authors2(line_block_t *line_block, uint8_t *authors_str, uint32_t authors_str_max_len) {
-  uchar_t *ustr = malloc(sizeof(uchar_t) * 1000);
-  author_t *authors = malloc(sizeof(author_t) * 1000);
+uint32_t get_authors2(line_block_t *line_block, uint8_t *authors_str, int authors_str_max_len) {
+  uchar_t *ustr = malloc(sizeof(uchar_t) * 500);
+  author_t *authors = malloc(sizeof(author_t) * 500);
 
-  memset(authors, 0, sizeof(author_t) * 1000);
+  memset(authors, 0, sizeof(author_t) * 500);
 
   *authors_str = 0;
 
@@ -301,7 +345,7 @@ uint32_t get_authors2(line_block_t *line_block, uint8_t *authors_str, uint32_t a
     line_t *line = line_block->lines[line_i];
 
     uint32_t ustr_len;
-    line_to_uchars(line, ustr, &ustr_len);
+    line_to_uchars(line, ustr, &ustr_len,500);
 
 
 //    printf("A:\n");
@@ -361,11 +405,11 @@ uint32_t get_authors2(line_block_t *line_block, uint8_t *authors_str, uint32_t a
       for (uint32_t k = 0; k < author->names_len; k++) {
         strcat(authors_str, author->names[k]);
 
-        if (k < author->names_len - 2) {
+        if (k + 2 < author->names_len) {
           strcat(authors_str, " ");
-        } else if (k == author->names_len - 2) {
+        } else if (k + 2 == author->names_len) {
           strcat(authors_str, "\t");
-        } else if (k == author->names_len - 1) {
+        } else if (k + 1 == author->names_len) {
           strcat(authors_str, "\n");
         }
       }

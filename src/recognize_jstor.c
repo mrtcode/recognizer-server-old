@@ -20,6 +20,7 @@
 #include "word.h"
 #include "journal.h"
 #include "recognize_jstor.h"
+#include "recognize_title.h"
 
 uint32_t extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uint32_t *groups_len) {
     uint32_t ret = 0;
@@ -62,51 +63,63 @@ uint32_t extract_jt(uint8_t *text, uint8_t *regText, uint8_t groups[][2048], uin
 }
 
 uint32_t get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+    line_block_t line_blocks[MAX_LINE_BLOCKS];
+    uint32_t line_blocks_len = 0;
+    get_line_blocks(page, line_blocks, &line_blocks_len);
 
-    *text_len = 0;
-    for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
+    for (uint32_t i = 0; i < line_blocks_len; i++) {
+        line_block_t *tlb = &line_blocks[i];
+//        print_block(tlb);
+//        printf("\n\n");
+//
 
-        flow_t *flow = &page->flows[flow_i];
+        *text = 0;
+        *text_len = 0;
 
-        for (uint32_t block_i = 0; block_i < flow->blocks_len; block_i++) {
-            block_t *block = &flow->blocks[block_i];
+        for (uint32_t line_i = 0; line_i < tlb->lines_len; line_i++) {
+            line_t *line = tlb->lines[line_i];
 
-            for (uint32_t line_i = 0; line_i < block->lines_len; line_i++) {
-                line_t *line = block->lines + line_i;
+            uint8_t line_str[512] = {0};
+            uint32_t line_str_len = 0;
 
-                uint8_t line_str[512] = {0};
-                uint32_t line_str_len = 0;
+            for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
+                word_t *word = line->words + word_i;
 
-                for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
-                    word_t *word = line->words + word_i;
+                if (line_str_len + word->text_len > 500) break;
 
-                    if (line_str_len + word->text_len > 500) break;
+                memcpy(line_str + line_str_len, word->text, word->text_len);
+                (line_str_len) += word->text_len;
 
-                    memcpy(line_str + line_str_len, word->text, word->text_len);
-                    (line_str_len) += word->text_len;
-
-                    if (word->space) {
-                        *(line_str + line_str_len) = ' ';
-                        (line_str_len)++;
-                    }
-                }
-
-                if (*text_len + line_str_len > max_text_size - 5) return 0;
-                memcpy(text + *text_len, line_str, line_str_len);
-                (*text_len) += line_str_len;
-
-                text[(*text_len)++] = '\n';
-//                text[++(*text_len)] = 0;
-
-                if (!strncmp(line_str, "Stable URL: http://www.jstor.org/stable/", 40)) {
-                    return 1;
+                if (word->space) {
+                    *(line_str + line_str_len) = ' ';
+                    (line_str_len)++;
                 }
             }
+
+            if (*text_len + line_str_len > max_text_size - 5) return 0;
+            memcpy(text + *text_len, line_str, line_str_len);
+            (*text_len) += line_str_len;
+
             text[(*text_len)++] = '\n';
+//                text[++(*text_len)] = 0;
+
+            if (!strncmp(line_str, "Stable URL: http://www.jstor.org/stable/", 40)) {
+                return 1;
+            }
         }
+        text[(*text_len)++] = '\n';
+
     }
 
     return 0;
+}
+
+uint32_t clean_lf(uint8_t *text) {
+    uint8_t *p = text;
+    while(*p) {
+        if(*p=='\n') *p = ' ';
+        p++;
+    }
 }
 
 uint32_t extract_jstor(page_t *page, res_metadata_t *result) {
@@ -320,6 +333,8 @@ uint32_t extract_jstor(page_t *page, res_metadata_t *result) {
             memcpy(result->year, c, 4);
         }
     }
+
+    clean_lf(result->title);
 
     return 1;
 }
