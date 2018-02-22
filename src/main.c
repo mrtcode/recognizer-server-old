@@ -84,6 +84,14 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     const onion_block *dreq = onion_request_get_data(req);
     if (!dreq) return OCS_PROCESSED;
 
+    const char *x_forwarded_for = onion_request_get_header(req, "X-Forwarded-For");
+    if(x_forwarded_for) {
+        char time_buf[20];
+        time_t now = time (0);
+        strftime (time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", localtime (&now));
+        printf("[%s] /recognize %s\n", time_buf, x_forwarded_for);
+    }
+
     const char *content_encoding = onion_request_get_header(req, "Content-Encoding");
 
     const char *data = onion_block_data(dreq);
