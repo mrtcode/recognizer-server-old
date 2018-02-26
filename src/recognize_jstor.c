@@ -1,24 +1,14 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
 #include <jemalloc/jemalloc.h>
 #include <stdlib.h>
-#include <sqlite3.h>
-#include <jansson.h>
-#include <math.h>
 #include <unicode/ustdio.h>
-#include <unicode/ustring.h>
-#include <unicode/unorm2.h>
 #include <unicode/uregex.h>
 #include "defines.h"
-#include "doidata.h"
-#include "text.h"
 #include "recognize.h"
 #include "log.h"
-#include "word.h"
-#include "journal.h"
 #include "recognize_jstor.h"
 #include "recognize_title.h"
 
@@ -116,8 +106,8 @@ uint32_t get_jstor_data(page_t *page, uint8_t *text, uint32_t *text_len, uint32_
 
 uint32_t clean_lf(uint8_t *text) {
     uint8_t *p = text;
-    while(*p) {
-        if(*p=='\n') *p = ' ';
+    while (*p) {
+        if (*p == '\n') *p = ' ';
         p++;
     }
 }
@@ -224,7 +214,7 @@ uint32_t extract_jstor(page_t *page, res_metadata_t *result) {
                 *e = 0;
                 strcat(result->authors, s);
                 strcat(result->authors, "\n");
-                s=e+2;
+                s = e + 2;
                 continue;
             }
 
@@ -234,7 +224,7 @@ uint32_t extract_jstor(page_t *page, res_metadata_t *result) {
                 strcat(result->authors, s);
                 strcat(result->authors, "\n");
 
-                s=e+5;
+                s = e + 5;
                 continue;
             }
 

@@ -69,10 +69,10 @@ uint32_t word_init(uint8_t *directory) {
     fread(hashes, hashes_len, 20, fp);
 
     for (uint32_t i = 0; i < hashes_len; i++) {
-        uint64_t hash = *((uint64_t *)(hashes+(i*20)));
-        uint32_t a = *((uint32_t *)(hashes+(i*20)+8+(4*0)));
-        uint32_t b = *((uint32_t *)(hashes+(i*20)+8+(4*1)));
-        uint32_t c = *((uint32_t *)(hashes+(i*20)+8+(4*2)));
+        uint64_t hash = *((uint64_t *) (hashes + (i * 20)));
+        uint32_t a = *((uint32_t *) (hashes + (i * 20) + 8 + (4 * 0)));
+        uint32_t b = *((uint32_t *) (hashes + (i * 20) + 8 + (4 * 1)));
+        uint32_t c = *((uint32_t *) (hashes + (i * 20) + 8 + (4 * 2)));
 
         word_add(hash, a, b, c);
         //log_debug("%lu %u %u %u\n", hash, a, b, c);
@@ -100,13 +100,13 @@ uint8_t word_add(uint64_t h, uint32_t aa, uint32_t bb, uint32_t cc) {
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {
             if (*((uint64_t *) (row->slots + slot_size * i)) == hash64) {
-                uint32_t *a = (uint32_t *) (row->slots + slot_size * i + 8 + (4*0));
-                uint32_t *b = (uint32_t *) (row->slots + slot_size * i + 8 + (4*1));
-                uint32_t *c = (uint32_t *) (row->slots + slot_size * i + 8 + (4*2));
+                uint32_t *a = (uint32_t *) (row->slots + slot_size * i + 8 + (4 * 0));
+                uint32_t *b = (uint32_t *) (row->slots + slot_size * i + 8 + (4 * 1));
+                uint32_t *c = (uint32_t *) (row->slots + slot_size * i + 8 + (4 * 2));
 
-                (*a)+=aa;
-                (*b)+=bb;
-                (*c)+=cc;
+                (*a) += aa;
+                (*b) += bb;
+                (*c) += cc;
 
                 return 0;
             }
@@ -134,17 +134,17 @@ uint8_t word_add(uint64_t h, uint32_t aa, uint32_t bb, uint32_t cc) {
 
     *((uint64_t *) (row->slots + slot_size * row->slots_len)) = hash64;
 
-    uint32_t *a = (uint32_t *) (row->slots + slot_size * row->slots_len + 8 + (4*0));
-    uint32_t *b = (uint32_t *) (row->slots + slot_size * row->slots_len + 8 + (4*1));
-    uint32_t *c = (uint32_t *) (row->slots + slot_size * row->slots_len + 8 + (4*2));
+    uint32_t *a = (uint32_t *) (row->slots + slot_size * row->slots_len + 8 + (4 * 0));
+    uint32_t *b = (uint32_t *) (row->slots + slot_size * row->slots_len + 8 + (4 * 1));
+    uint32_t *c = (uint32_t *) (row->slots + slot_size * row->slots_len + 8 + (4 * 2));
 
     *a = 0;
     *b = 0;
     *c = 0;
 
-    (*a)+=aa;
-    (*b)+=bb;
-    (*c)+=cc;
+    (*a) += aa;
+    (*b) += bb;
+    (*c) += cc;
 
     row->slots_len++;
 
@@ -161,9 +161,9 @@ uint8_t word_get(uint64_t h, uint32_t *a, uint32_t *b, uint32_t *c) {
     if (row->slots) {
         for (uint32_t i = 0; i < row->slots_len; i++) {
             if (*((uint64_t *) (row->slots + slot_size * i)) == hash64) {
-                uint32_t *a1 = (uint32_t *) (row->slots + slot_size * i + 8 + (4*0));
-                uint32_t *b1 = (uint32_t *) (row->slots + slot_size * i + 8 + (4*1));
-                uint32_t *c1 = (uint32_t *) (row->slots + slot_size * i + 8 + (4*2));
+                uint32_t *a1 = (uint32_t *) (row->slots + slot_size * i + 8 + (4 * 0));
+                uint32_t *b1 = (uint32_t *) (row->slots + slot_size * i + 8 + (4 * 1));
+                uint32_t *c1 = (uint32_t *) (row->slots + slot_size * i + 8 + (4 * 2));
 
                 *a = *a1;
                 *b = *b1;
@@ -174,7 +174,3 @@ uint8_t word_get(uint64_t h, uint32_t *a, uint32_t *b, uint32_t *c) {
     }
     return 0;
 }
-
-
-
-

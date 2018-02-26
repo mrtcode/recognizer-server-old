@@ -1,24 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
 #include <jemalloc/jemalloc.h>
-#include <stdlib.h>
-#include <sqlite3.h>
-#include <jansson.h>
-#include <math.h>
-#include <unicode/ustdio.h>
-#include <unicode/ustring.h>
-#include <unicode/unorm2.h>
-#include <unicode/uregex.h>
-#include "defines.h"
-#include "doidata.h"
-#include "text.h"
 #include "recognize.h"
 #include "log.h"
-#include "word.h"
-#include "journal.h"
 #include "recognize_fonts.h"
 
 void increment_font(fonts_info_t *fonts_info, uint32_t font_id, double font_size, uint32_t value) {

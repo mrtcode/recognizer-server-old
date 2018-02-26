@@ -27,10 +27,8 @@
 #include <pthread.h>
 #include <onion/onion.h>
 #include <onion/block.h>
-#include <onion/exportlocal.h>
 #include <jansson.h>
 #include <unicode/utf.h>
-#include <sqlite3.h>
 #include <dirent.h>
 #include <zlib.h>
 #include "doidata.h"
@@ -85,11 +83,8 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     if (!dreq) return OCS_PROCESSED;
 
     const char *x_forwarded_for = onion_request_get_header(req, "X-Forwarded-For");
-    if(x_forwarded_for) {
-        char time_buf[20];
-        time_t now = time (0);
-        strftime (time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", localtime (&now));
-        printf("[%s] /recognize %s\n", time_buf, x_forwarded_for);
+    if (x_forwarded_for) {
+        log_info("%s\n", x_forwarded_for);
     }
 
     const char *content_encoding = onion_request_get_header(req, "Content-Encoding");
@@ -175,7 +170,7 @@ onion_connection_status url_recognize(void *_, onion_request *req, onion_respons
     char *str = json_dumps(obj, JSON_INDENT(1) | JSON_PRESERVE_ORDER);
     json_decref(obj);
 
-    log_debug("\n%s",str);
+    log_debug("\n%s", str);
 
     onion_response_set_header(res, "Content-Type", "application/json; charset=utf-8");
     onion_response_printf(res, "%s", str);
@@ -296,7 +291,7 @@ int main(int argc, char **argv) {
 
     onion_set_port(on, opt_port);
     onion_set_max_threads(on, 16);
-    onion_set_max_post_size(on, 5*1024*1024);
+    onion_set_max_post_size(on, 5 * 1024 * 1024);
 
     onion_url *urls = onion_root_url(on);
 

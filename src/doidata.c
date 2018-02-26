@@ -87,7 +87,7 @@ uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidata
     while ((rc = sqlite3_step(doidata_stmt)) == SQLITE_ROW) {
         doidata_t *doi = &doidatas[(*doidatas_len)++];
 
-        if(*doidatas_len == 6) {
+        if (*doidatas_len == 6) {
             ret = 0;
             break;
         }
@@ -98,7 +98,7 @@ uint32_t doidata_get(uint64_t title_hash, doidata_t *doidatas, uint32_t *doidata
         doi->author2_hash = sqlite3_column_int(doidata_stmt, 4);
 
         uint8_t *str = sqlite3_column_text(doidata_stmt, 5);
-        if(strlen(str)<=DOI_LEN) {
+        if (strlen(str) <= DOI_LEN) {
             strcpy(doi->doi, str);
             ret = 1;
         }
@@ -141,12 +141,12 @@ uint32_t doidata_has_doi(uint8_t *doi) {
 uint32_t doidata_close() {
     int rc;
     log_info("closing db");
-    
+
     // doi
     if ((rc = sqlite3_finalize(doidata_stmt)) != SQLITE_OK) {
         fprintf(stderr, "sqlite3_finalize: (%d):\n", rc);
     }
-    
+
     if ((rc = sqlite3_close(doidata_sqlite)) != SQLITE_OK) {
         log_error("(%d): %s", rc, sqlite3_errmsg(doidata_sqlite));
         return 0;
@@ -154,4 +154,3 @@ uint32_t doidata_close() {
 
     return 1;
 }
-

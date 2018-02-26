@@ -25,4 +25,4 @@ add_executable(recognizer-server ${SOURCE_FILES})
 
 set(CMAKE_C_FLAGS_RELEASE "-O2")
 
-target_link_libraries(recognizer-server icuio icui18n icuuc icudata onion sqlite3 jansson pthread jemalloc z)
+target_link_libraries(recognizer-server icuio icui18n icuuc icudata onion sqlite3 jansson pthread jemalloc z m)

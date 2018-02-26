@@ -1,24 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
-#include <jemalloc/jemalloc.h>
-#include <stdlib.h>
-#include <sqlite3.h>
-#include <jansson.h>
 #include <math.h>
 #include <unicode/ustdio.h>
-#include <unicode/ustring.h>
-#include <unicode/unorm2.h>
-#include <unicode/uregex.h>
-#include "defines.h"
-#include "doidata.h"
-#include "text.h"
 #include "recognize.h"
 #include "log.h"
-#include "word.h"
-#include "journal.h"
 #include "recognize_abstract.h"
 
 uint32_t is_simple_abstract_name(uint8_t *text) {
@@ -366,7 +353,7 @@ uint32_t extract_abstract_structured(page_t *page, uint8_t *abstract, uint32_t a
         }
 
         if (start) {
-            if (names_detected >= 2 && last_name_type==3) {
+            if (names_detected >= 2 && last_name_type == 3) {
                 log_debug("%s\n\n\n", abstract);
                 abstract[abstract_len] = 0;
                 return 1;

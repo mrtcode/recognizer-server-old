@@ -2,7 +2,7 @@
 #define RECOGNIZER_SERVER_TEXT_H
 
 typedef struct text_info {
-    uint32_t  uppercase;
+    uint32_t uppercase;
     uint32_t lowercase;
     uint32_t alphabetic;
     uint32_t numbers;

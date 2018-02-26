@@ -141,9 +141,9 @@ uint32_t text_char_len(uint8_t *text) {
     uint32_t i = 0;
     UChar32 c;
 
-    while(1) {
+    while (1) {
         U8_NEXT(text, i, -1, c);
-        if(c>0) {
+        if (c > 0) {
             len++;
         } else {
             break;
@@ -185,9 +185,9 @@ uint32_t text_normalize_doi(uint8_t *doi) {
 
         if (!c) break;
 
-        if(c>='A' && c<='Z') {
-            c=c+32;
-            doi[s]=c;
+        if (c >= 'A' && c <= 'Z') {
+            c = c + 32;
+            doi[s] = c;
         }
 
     } while (1);
@@ -213,9 +213,9 @@ uint32_t get_alphabetic_percent(uint8_t *text) {
 
         total++;
 
-        if (u_isUAlphabetic(c) || c==' ' || c==2010 || c==2011 || c==2012) alphabetic++;
+        if (u_isUAlphabetic(c) || c == ' ' || c == 2010 || c == 2011 || c == 2012) alphabetic++;
 
     } while (1);
 
-    return alphabetic*100/total;
+    return alphabetic * 100 / total;
 }

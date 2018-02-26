@@ -26,6 +26,7 @@ uint32_t get_line_blocks(page_t *page, line_block_t *line_blocks, uint32_t *line
 
 uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str);
 
-uint32_t line_block_to_text(line_block_t *line_block, uint32_t from, uint8_t *text, uint32_t *text_len, uint32_t max_text_size);
+uint32_t
+line_block_to_text(line_block_t *line_block, uint32_t from, uint8_t *text, uint32_t *text_len, uint32_t max_text_size);
 
 #endif //RECOGNIZER_SERVER_RECOGNIZE_TITLE_H

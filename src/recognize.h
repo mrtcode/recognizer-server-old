@@ -1,6 +1,7 @@
 #ifndef RECOGNIZER_SERVER_RECOGNIZE_H
 #define RECOGNIZER_SERVER_RECOGNIZE_H
 
+#include <jansson.h>
 #include "defines.h"
 
 typedef struct word {
@@ -93,4 +94,5 @@ typedef struct pdf_metadata {
 } pdf_metadata_t;
 
 uint32_t recognize(json_t *body, res_metadata_t *result);
+
 #endif //RECOGNIZER_SERVER_RECOGNIZE_H

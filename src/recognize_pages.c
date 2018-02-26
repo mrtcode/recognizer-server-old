@@ -1,24 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <inttypes.h>
 #include <string.h>
 #include <sys/time.h>
-#include <jemalloc/jemalloc.h>
 #include <stdlib.h>
-#include <sqlite3.h>
-#include <jansson.h>
 #include <math.h>
-#include <unicode/ustdio.h>
-#include <unicode/ustring.h>
-#include <unicode/unorm2.h>
-#include <unicode/uregex.h>
-#include "defines.h"
-#include "doidata.h"
-#include "text.h"
 #include "recognize.h"
 #include "log.h"
-#include "word.h"
-#include "journal.h"
 #include "recognize_pages.h"
 
 uint32_t extract_pages(doc_t *doc, uint32_t *start, uint32_t *first) {
@@ -38,10 +25,12 @@ uint32_t extract_pages(doc_t *doc, uint32_t *start, uint32_t *first) {
                         for (uint32_t word_i = 0; word_i < line->words_len; word_i++) {
                             word_t *word = line->words + word_i;
 
-                            if(
-                                    !(fabs(page->content_x_left-word->x_min)<5.0 ||
-                                    fabs(page->content_x_right-word->x_max)<5.0 ||
-                                    fabs((page->content_x_right-page->content_x_left)/2-(word->x_min+(word->x_max-word->x_min)/2))<5.0)) continue;
+                            if (
+                                    !(fabs(page->content_x_left - word->x_min) < 5.0 ||
+                                      fabs(page->content_x_right - word->x_max) < 5.0 ||
+                                      fabs((page->content_x_right - page->content_x_left) / 2 -
+                                           (word->x_min + (word->x_max - word->x_min) / 2)) < 5.0))
+                                continue;
 
                             page_t *page2 = doc->pages + page_i + 2;
 
