@@ -365,17 +365,17 @@ uint32_t get_authors2(line_block_t *line_block, uint8_t *authors_str, int author
             uint32_t c = 0;
 
             if (author->ref) c = 2;
-
-
-            if (negative == 0) c = 2;
-
-            if (authors_len == 1) {
-                if (negative < author->names_len) c = 1;
+            
+            if(negative>=2 || negative == author->names_len) {
+                goto end;
             } else {
-                if (!negative) c = 2;
+                if (negative == 0) c = 2;
+                if (authors_len == 1) {
+                    if (negative < author->names_len) c = 1;
+                } else {
+                    if (!negative) c = 2;
+                }
             }
-
-            if (negative == author->names_len) goto end;
 
             if (c > confidence) confidence = c;
 

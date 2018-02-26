@@ -486,11 +486,11 @@ double get_average_font_size_threshold(page_t *page) {
     }
 
     double threshold_fold_size = max_font_size * 0.7;
-    if (threshold_fold_size < min_font_size + 3) threshold_fold_size = min_font_size + 1;
+//    if (threshold_fold_size < min_font_size + 3) threshold_fold_size = min_font_size + 1;
+    threshold_fold_size = min_font_size+1;
 
     return threshold_fold_size;
 }
-
 
 typedef struct slb {
     uint32_t i;
@@ -508,6 +508,29 @@ uint32_t get_sorted_blocks_by_font_size(line_block_t *line_blocks, uint32_t line
         slbs[i].line_block = &line_blocks[i];
     }
     qsort(slbs, line_blocks_len, sizeof(slb_t), compare_slb);
+}
+
+uint32_t is_visually_separated(line_block_t *line_blocks, uint32_t line_blocks_len, uint32_t title_line_block_i) {
+    line_block_t *lb_prev = 0;
+
+    if (title_line_block_i > 0) lb_prev = &line_blocks[title_line_block_i - 1];
+
+    line_block_t *lb = &line_blocks[title_line_block_i];
+
+    line_block_t *lb_next = 0;
+
+    if (title_line_block_i + 1 < line_blocks_len) lb_next = &line_blocks[title_line_block_i + 1];
+
+    uint8_t before = 1;
+    uint8_t after = 1;
+
+    if (lb_prev && lb->y_min - lb_prev->y_max < fmax(lb->max_font_size, lb_prev->max_font_size)) before = 0;
+
+    if (lb_next && lb_next->y_min - lb->y_max < fmax(lb->max_font_size, lb_next->max_font_size)) after = 0;
+
+    if (!before && !after) return 0;
+
+    return 1;
 }
 
 uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str) {
@@ -542,9 +565,11 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
 
         line_block_to_text(tlb, 0, t, &t_len, 500);
 
-        if (strlen(t) < 15 || strlen(t) > 400) continue;
+        if (strlen(t) < 25 || strlen(t) > 400) continue;
 
         if (get_alphabetic_percent(t) < 60) continue;
+
+        if (!tlb->upper && tlb->max_font_size < font_size_threshold && tlb->y_min>page->height/3) continue;
 
         if (extract_authors(line_blocks, line_blocks_len, slbs[i].i, authors_str)) {
             uint32_t len;
@@ -566,6 +591,8 @@ uint32_t extract_title_author(page_t *page, uint8_t *title, uint8_t *authors_str
         line_block_to_text(tlb, 0, t, &t_len, 500);
         if (strlen(t) < 20 || strlen(t) > 400) continue;
         if (get_alphabetic_percent(t) < 60) continue;
+
+        if(!is_visually_separated(line_blocks, line_blocks_len, i)) continue;
 
         if (extract_authors(line_blocks, line_blocks_len, i, authors_str)) {
             uint32_t len;

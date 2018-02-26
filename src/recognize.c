@@ -241,10 +241,20 @@ uint32_t destroy_doc(doc_t *doc) {
     free(doc->pages);
 }
 
-uint32_t doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text_size) {
+uint32_t doc_to_text(doc_t *doc, uint8_t *text, uint32_t *text_len, uint32_t max_text_size, uint32_t total_pages) {
     *text_len = 0;
 
-    for (uint32_t page_i = 0; page_i < doc->pages_len && page_i < 2; page_i++) {
+    uint32_t max_pages = 2;
+
+    if(doc->pages_len>2) {
+        max_pages = doc->pages_len-1;
+    }
+
+    if(total_pages>doc->pages_len) {
+        max_pages = doc->pages_len;
+    }
+
+    for (uint32_t page_i = 0; page_i < doc->pages_len && page_i < max_pages; page_i++) {
         page_t *page = doc->pages + page_i;
 
         for (uint32_t flow_i = 0; flow_i < page->flows_len; flow_i++) {
@@ -634,7 +644,7 @@ uint32_t recognize(json_t *body, res_metadata_t *result) {
     uint8_t processed_text[MAX_LOOKUP_TEXT_LEN];
     uint32_t processed_text_len = MAX_LOOKUP_TEXT_LEN;
 
-    doc_to_text(doc, text, &text_len, MAX_LOOKUP_TEXT_LEN - 1);
+    doc_to_text(doc, text, &text_len, MAX_LOOKUP_TEXT_LEN - 1, total_pages);
     text_process(text, processed_text, &processed_text_len);
 
     if (!processed_text_len) goto end;
